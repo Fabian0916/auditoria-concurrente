@@ -3,12 +3,10 @@ import { db } from "./firebase";
 import { ref, onValue, update, push, remove, get } from "firebase/database";
 import * as XLSX from "xlsx";
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
 const COLORS   = ["#00C9A7","#4F8EF7","#F7B731","#FC5C65","#45AAF2","#A55EEA","#FD9644","#26DE81"];
 const UNIDADES = ["Cama","Camilla","Cubículo","Habitación","Otro"];
 const DEFAULT_PIN = "1234";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const hoyISO    = () => new Date().toISOString().slice(0,10);
 const tsNow     = () => new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const fechaCorta= () => new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"});
@@ -17,7 +15,6 @@ const fechaLarga= (iso) => {
   catch{ return iso; }
 };
 
-// ─── Estilos reutilizables ────────────────────────────────────────────────────
 const inp = {
   background:"#0b1523", border:"1px solid #1e2d45", borderRadius:8,
   padding:"8px 11px", color:"#e8f0fe", fontSize:13, outline:"none",
@@ -28,7 +25,6 @@ const mkBtn = (bg, fg="#0b1523", extra={}) => ({
   padding:"8px 14px", cursor:"pointer", fontSize:12, fontWeight:700, ...extra
 });
 
-// ─── RadialProgress ───────────────────────────────────────────────────────────
 function RadialProgress({pct,color,size=72}){
   const r=(size-12)/2, circ=2*Math.PI*r, offset=circ-(Math.min(pct,100)/100)*circ;
   return(
@@ -41,7 +37,6 @@ function RadialProgress({pct,color,size=72}){
   );
 }
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
 function Modal({title,onClose,children}){
   return(
     <div style={{position:"fixed",inset:0,background:"#000000cc",zIndex:300,
@@ -58,7 +53,20 @@ function Modal({title,onClose,children}){
   );
 }
 
-// ─── EditLogForm (componente separado para evitar hooks condicionales) ─────────
+// Campo de identificación de unidad — texto libre, alfanumérico
+function CampoUnidadNumero({value, onChange}){
+  return(
+    <input
+      type="text"
+      placeholder="ID / N° (ej. 12A, UCI-3)"
+      value={value}
+      onChange={e=>onChange(e.target.value)}
+      maxLength={20}
+      style={{...inp, fontSize:12}}
+    />
+  );
+}
+
 function EditLogForm({entry,listaServicios,onSave,onCancel}){
   const [servicio, setServicio] = useState(entry.servicio||"");
   const [unidad,   setUnidad]   = useState(entry.unidad||"Cama");
@@ -74,8 +82,8 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
       <select value={unidad} onChange={e=>setUnidad(e.target.value)} style={inp}>
         {UNIDADES.map(u=><option key={u} value={u}>{u}</option>)}
       </select>
-      <input type="number" placeholder="Número (opcional)" value={numero}
-        onChange={e=>setNumero(e.target.value)} style={inp}/>
+      {/* Texto libre para identificador de unidad */}
+      <CampoUnidadNumero value={numero} onChange={setNumero}/>
       <div style={{display:"flex",gap:8,marginTop:4}}>
         <button onClick={()=>onSave({servicio,unidad,numero,auditoraId:entry.auditoraId})}
           style={{...mkBtn("linear-gradient(135deg,#00C9A7,#4F8EF7)","#fff"),flex:2,padding:"10px 0",fontSize:13,borderRadius:10}}>
@@ -90,7 +98,6 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
   );
 }
 
-// ─── LoginCoordinadora ────────────────────────────────────────────────────────
 function LoginCoordinadora({onLogin,onBack}){
   const [pin, setPin]   = useState("");
   const [err, setErr]   = useState(false);
@@ -117,8 +124,7 @@ function LoginCoordinadora({onLogin,onBack}){
           style={{...mkBtn("linear-gradient(135deg,#4F8EF7,#A55EEA)","#fff"),width:"100%",padding:"11px 0",fontSize:14,marginBottom:10}}>
           Ingresar
         </button>
-        <button onClick={onBack}
-          style={{...mkBtn("none","#4f7096"),fontSize:12,width:"100%"}}>
+        <button onClick={onBack} style={{...mkBtn("none","#4f7096"),fontSize:12,width:"100%"}}>
           ← Volver
         </button>
       </div>
@@ -126,12 +132,10 @@ function LoginCoordinadora({onLogin,onBack}){
   );
 }
 
-// ─── Portada (selección de rol) ───────────────────────────────────────────────
 function Portada({config, onSelectRol}){
   return(
     <div style={{minHeight:"100vh",background:"#0b1523",display:"flex",flexDirection:"column",
       alignItems:"center",justifyContent:"center",gap:20,padding:24}}>
-      {/* Logo */}
       {config.logoUrl
         ? <img src={config.logoUrl} alt="Logo" style={{width:90,height:90,borderRadius:16,objectFit:"contain",background:"#fff",padding:6}}/>
         : <div style={{width:72,height:72,borderRadius:18,background:"linear-gradient(135deg,#00C9A7,#4F8EF7)",
@@ -162,7 +166,6 @@ function Portada({config, onSelectRol}){
   );
 }
 
-// ─── Header compartido ────────────────────────────────────────────────────────
 function Header({config, esCoord, connected, onBack, extraButtons}){
   return(
     <div style={{background:"linear-gradient(135deg,#0f1f35,#0b1523)",
@@ -171,8 +174,7 @@ function Header({config, esCoord, connected, onBack, extraButtons}){
       flexWrap:"wrap",gap:8,position:"sticky",top:0,zIndex:100}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         {config.logoUrl
-          ? <img src={config.logoUrl} alt="Logo"
-              style={{width:30,height:30,borderRadius:7,objectFit:"contain",background:"#fff",padding:2}}/>
+          ? <img src={config.logoUrl} alt="Logo" style={{width:30,height:30,borderRadius:7,objectFit:"contain",background:"#fff",padding:2}}/>
           : <div style={{width:30,height:30,borderRadius:8,
               background:esCoord?"linear-gradient(135deg,#4F8EF7,#A55EEA)":"linear-gradient(135deg,#00C9A7,#4F8EF7)",
               display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>
@@ -199,33 +201,33 @@ function Header({config, esCoord, connected, onBack, extraButtons}){
 }
 
 // ─── Vista AUDITORA ───────────────────────────────────────────────────────────
-function VistaAuditora({config,auditoras,servicios,historial,log,connected,onBack}){
-  const [pulse,   setPulse]   = useState(null);
-  const [registro,setRegistro]= useState({});
+function VistaAuditora({config,auditoras,servicios,historial,connected,onBack}){
+  const [pulse,    setPulse]    = useState(null);
+  const [registro, setRegistro] = useState({});
 
-  const listaAuditoras  = Object.entries(auditoras);
-  const listaServicios  = Object.entries(servicios);
-  const total           = listaAuditoras.reduce((s,[,a])=>s+(a.historias||0),0);
-  const totalMeta       = listaAuditoras.reduce((s,[,a])=>s+(a.meta||30),0);
-  const pctGlobal       = totalMeta>0?Math.round((total/totalMeta)*100):0;
+  const listaAuditoras = Object.entries(auditoras);
+  const listaServicios = Object.entries(servicios);
+  const total      = listaAuditoras.reduce((s,[,a])=>s+(a.historias||0),0);
+  const totalMeta  = listaAuditoras.reduce((s,[,a])=>s+(a.meta||30),0);
+  const pctGlobal  = totalMeta>0?Math.round((total/totalMeta)*100):0;
 
   const setReg = (id,campo,val) =>
     setRegistro(r=>({...r,[id]:{...(r[id]||{}),[campo]:val}}));
 
   const registrar = async (auditoraId) => {
     const a = auditoras[auditoraId]; if(!a) return;
-    const reg = registro[auditoraId]||{};
+    const reg      = registro[auditoraId]||{};
     const servicio = reg.servicio||"";
     const unidad   = reg.unidad||"Cama";
-    const numero   = reg.numero||"";
+    const numero   = reg.numero||"";          // texto libre
     if(!servicio){ alert("Selecciona un servicio antes de registrar."); return; }
     const nuevas = (a.historias||0)+1;
     const key    = `${servicio}__${unidad}`;
     const tipos  = {...(a.tipos||{}),[key]:((a.tipos||{})[key]||0)+1};
     await update(ref(db,`auditoras/${auditoraId}`),{historias:nuevas,tipos});
-    const dia        = hoyISO();
-    const diaActual  = (historial[dia]&&historial[dia][auditoraId])||{total:0,tipos:{}};
-    const nuevosTipos= {...(diaActual.tipos||{}),[key]:((diaActual.tipos||{})[key]||0)+1};
+    const dia         = hoyISO();
+    const diaActual   = (historial[dia]&&historial[dia][auditoraId])||{total:0,tipos:{}};
+    const nuevosTipos = {...(diaActual.tipos||{}),[key]:((diaActual.tipos||{})[key]||0)+1};
     await update(ref(db,`historial/${dia}/${auditoraId}`),
       {total:(diaActual.total||0)+1,tipos:nuevosTipos});
     await push(ref(db,"log"),
@@ -239,7 +241,6 @@ function VistaAuditora({config,auditoras,servicios,historial,log,connected,onBac
     <div style={{minHeight:"100vh",background:"#0b1523",fontFamily:"'DM Sans','Segoe UI',sans-serif",color:"#e8f0fe"}}>
       <Header config={config} esCoord={false} connected={connected} onBack={onBack}/>
 
-      {/* Mini resumen */}
       <div style={{padding:"12px 18px 0"}}>
         <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:12,
           padding:"12px 18px",display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
@@ -260,7 +261,6 @@ function VistaAuditora({config,auditoras,servicios,historial,log,connected,onBac
         </div>
       </div>
 
-      {/* Tarjetas */}
       <div style={{padding:"12px 18px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
           {listaAuditoras.map(([id,a],i)=>{
@@ -286,27 +286,30 @@ function VistaAuditora({config,auditoras,servicios,historial,log,connected,onBac
                     <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color}}>{pct}%</div>
                   </div>
                 </div>
-                <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:5}}>
+
+                <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:6}}>
+                  {/* Servicio */}
                   <select value={reg.servicio||""} onChange={e=>setReg(id,"servicio",e.target.value)} style={{...inp,fontSize:12}}>
                     <option value="">— Selecciona servicio —</option>
                     {svcsDisp.map(([sid,s])=><option key={sid} value={s.nombre}>{s.nombre}</option>)}
                   </select>
-                  <div style={{display:"flex",gap:5}}>
-                    <select value={reg.unidad||"Cama"} onChange={e=>setReg(id,"unidad",e.target.value)} style={{...inp,fontSize:12,flex:1}}>
-                      {UNIDADES.map(u=><option key={u} value={u}>{u}</option>)}
-                    </select>
-                    <input type="number" placeholder="N°" value={reg.numero||""}
-                      onChange={e=>setReg(id,"numero",e.target.value)} style={{...inp,width:56,fontSize:12}}/>
-                  </div>
+                  {/* Tipo de unidad */}
+                  <select value={reg.unidad||"Cama"} onChange={e=>setReg(id,"unidad",e.target.value)} style={{...inp,fontSize:12}}>
+                    {UNIDADES.map(u=><option key={u} value={u}>{u}</option>)}
+                  </select>
+                  {/* Identificador alfanumérico — texto libre */}
+                  <CampoUnidadNumero value={reg.numero||""} onChange={val=>setReg(id,"numero",val)}/>
                 </div>
+
                 {a.tipos&&Object.keys(a.tipos).length>0&&(
                   <div style={{marginTop:7,display:"flex",flexWrap:"wrap",gap:3}}>
                     {Object.entries(a.tipos).map(([key,cnt])=>{
                       const[svc,und]=key.split("__");
-                      return <span key={key} style={{fontSize:9,background:`${color}22`,color,border:`1px solid ${color}44`,borderRadius:5,padding:"2px 5px"}}>{svc}/{und}: {cnt}</span>;
+                      return<span key={key} style={{fontSize:9,background:`${color}22`,color,border:`1px solid ${color}44`,borderRadius:5,padding:"2px 5px"}}>{svc}/{und}: {cnt}</span>;
                     })}
                   </div>
                 )}
+
                 <div style={{marginTop:9,height:4,background:"#1e2d45",borderRadius:99,overflow:"hidden"}}>
                   <div style={{height:"100%",borderRadius:99,background:pct>=100?"#26DE81":color,width:`${Math.min(pct,100)}%`,transition:"width 0.5s ease"}}/>
                 </div>
@@ -328,26 +331,25 @@ function VistaAuditora({config,auditoras,servicios,historial,log,connected,onBac
 
 // ─── Vista COORDINADORA ───────────────────────────────────────────────────────
 function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,onBack}){
-  const [coordView,   setCoordView]   = useState("dashboard");
-  const [pulse,       setPulse]       = useState(null);
-  const [modalAud,    setModalAud]    = useState(null);
-  const [modalEditLog,setModalEditLog]= useState(null);
-  const [filtroAud,   setFiltroAud]   = useState("todas");
-  const [filtroRango, setFiltroRango] = useState("semana");
-  const [nuevoSvc,    setNuevoSvc]    = useState("");
-  const [formAud,     setFormAud]     = useState({nombre:"",meta:30,servicios:[]});
-  const [newPin,      setNewPin]      = useState("");
-  const [pinMsg,      setPinMsg]      = useState("");
-  const [logoInput,   setLogoInput]   = useState("");
-  const [logoMsg,     setLogoMsg]     = useState("");
+  const [coordView,    setCoordView]    = useState("dashboard");
+  const [modalAud,     setModalAud]     = useState(null);
+  const [modalEditLog, setModalEditLog] = useState(null);
+  const [filtroAud,    setFiltroAud]    = useState("todas");
+  const [filtroRango,  setFiltroRango]  = useState("semana");
+  const [nuevoSvc,     setNuevoSvc]     = useState("");
+  const [formAud,      setFormAud]      = useState({nombre:"",meta:30,servicios:[]});
+  const [newPin,       setNewPin]       = useState("");
+  const [pinMsg,       setPinMsg]       = useState("");
+  const [logoInput,    setLogoInput]    = useState("");
+  const [logoMsg,      setLogoMsg]      = useState("");
 
   const listaAuditoras = Object.entries(auditoras);
   const listaServicios = Object.entries(servicios);
-  const total     = listaAuditoras.reduce((s,[,a])=>s+(a.historias||0),0);
-  const totalMeta = listaAuditoras.reduce((s,[,a])=>s+(a.meta||30),0);
-  const pctGlobal = totalMeta>0?Math.round((total/totalMeta)*100):0;
+  const total      = listaAuditoras.reduce((s,[,a])=>s+(a.historias||0),0);
+  const totalMeta  = listaAuditoras.reduce((s,[,a])=>s+(a.meta||30),0);
+  const pctGlobal  = totalMeta>0?Math.round((total/totalMeta)*100):0;
 
-  const guardarConfig  = async(campo,valor) => await update(ref(db,"config"),{[campo]:valor});
+  const guardarConfig = async(campo,valor) => await update(ref(db,"config"),{[campo]:valor});
 
   const resetAll = async () => {
     if(!window.confirm("¿Reiniciar todos los conteos del día?")) return;
@@ -364,11 +366,9 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     await push(ref(db,"log"),{ts:tsNow(),ts_ms:Date.now(),nombre:a.nombre,auditoraId:audId,delta,total:nuevas,servicio:"Ajuste manual",unidad:"—",numero:"",esAjuste:true});
   };
 
-  // Servicios
-  const agregarSvc    = async()=>{if(!nuevoSvc.trim())return;await push(ref(db,"servicios"),{nombre:nuevoSvc.trim()});setNuevoSvc("");};
-  const eliminarSvc   = async(id)=>{if(!window.confirm("¿Eliminar este servicio?"))return;await remove(ref(db,`servicios/${id}`));};
+  const agregarSvc  = async()=>{if(!nuevoSvc.trim())return;await push(ref(db,"servicios"),{nombre:nuevoSvc.trim()});setNuevoSvc("");};
+  const eliminarSvc = async(id)=>{if(!window.confirm("¿Eliminar?"))return;await remove(ref(db,`servicios/${id}`));};
 
-  // Auditoras
   const abrirNueva  = ()=>{setFormAud({nombre:"",meta:30,servicios:[]});setModalAud("new");};
   const abrirEditar = (id)=>{const a=auditoras[id];setFormAud({nombre:a.nombre,meta:a.meta||30,servicios:a.servicios||[]});setModalAud(id);};
   const guardarAud  = async()=>{
@@ -384,7 +384,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     setFormAud(f=>({...f,servicios:cur.includes(sid)?cur.filter(x=>x!==sid):[...cur,sid]}));
   };
 
-  // Log
   const eliminarLogEntry = async(entry)=>{
     if(!window.confirm("¿Eliminar este registro?")) return;
     await remove(ref(db,`log/${entry._id}`));
@@ -410,7 +409,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     setModalEditLog(null);
   };
 
-  // PIN
   const cambiarPin = async()=>{
     if(newPin.length<4){setPinMsg("El PIN debe tener al menos 4 caracteres.");return;}
     await guardarConfig("pin",newPin);
@@ -418,7 +416,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     setTimeout(()=>setPinMsg(""),3000);
   };
 
-  // Logo
   const guardarLogo = async()=>{
     if(!logoInput.trim()){setLogoMsg("Ingresa una URL válida.");return;}
     await guardarConfig("logoUrl",logoInput.trim());
@@ -431,7 +428,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     setTimeout(()=>setLogoMsg(""),3000);
   };
 
-  // Excel
   const exportToExcel = ()=>{
     const wb=XLSX.utils.book_new();
     const listaS=Object.values(servicios).map(s=>s.nombre);
@@ -451,6 +447,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     ws1["!cols"]=[{wch:26},{wch:8},{wch:8},{wch:12},{wch:18},...listaS.flatMap(()=>UNIDADES.map(()=>({wch:14})))];
     listaAuditoras.forEach((_,i)=>{const c=`D${5+i}`;if(ws1[c])ws1[c].z="0.0%";});
     XLSX.utils.book_append_sheet(wb,ws1,"Resumen del día");
+
     const dias=Object.keys(historial).sort().reverse();
     if(dias.length>0){
       const rows2=[["Historial"],[],["Fecha","Auditora","Total",...listaS.flatMap(s=>UNIDADES.map(u=>`${s}/${u}`))],
@@ -461,9 +458,10 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
       const ws2=XLSX.utils.aoa_to_sheet(rows2);
       XLSX.utils.book_append_sheet(wb,ws2,"Historial");
     }
+
     const logFiltrado=log.filter(e=>e.tipo!=="reset");
     if(logFiltrado.length>0){
-      const rows3=[["Registro"],[],["Hora","Auditora","Servicio","Unidad","N°","Total","Tipo"],
+      const rows3=[["Registro"],[],["Hora","Auditora","Servicio","Unidad","Identificador","Total","Tipo"],
         ...logFiltrado.map(e=>[e.ts,e.nombre,e.servicio||"—",e.unidad||"—",e.numero||"—",e.total,e.esAjuste?"Ajuste manual":"Registro"])];
       const ws3=XLSX.utils.aoa_to_sheet(rows3);
       XLSX.utils.book_append_sheet(wb,ws3,"Registro");
@@ -496,7 +494,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     <div style={{minHeight:"100vh",background:"#0b1523",fontFamily:"'DM Sans','Segoe UI',sans-serif",color:"#e8f0fe"}}>
       <Header config={config} esCoord connected={connected} onBack={onBack} extraButtons={extraButtons}/>
 
-      {/* Nav tabs */}
       <div style={{background:"#0b1a2a",borderBottom:"1px solid #1e2d45",padding:"0 18px",display:"flex",gap:4}}>
         {navItems.map(n=>(
           <button key={n.id} onClick={()=>setCoordView(n.id)} style={{
@@ -512,7 +509,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
 
       <div style={{padding:"16px 18px"}}>
 
-        {/* ── DASHBOARD ── */}
         {coordView==="dashboard"&&(
           <>
             <div style={{background:"linear-gradient(135deg,#0f1f35,#111f33)",border:"1px solid #1e2d45",
@@ -586,13 +582,10 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
           </>
         )}
 
-        {/* ── LOG EDITABLE ── */}
         {coordView==="log"&&(
           <div>
             <div style={{fontSize:14,fontWeight:700,marginBottom:14,color:"#4F8EF7"}}>📝 Registros individuales</div>
-            <div style={{fontSize:12,color:"#4f7096",marginBottom:12}}>
-              Edita o elimina cualquier registro. El conteo se ajusta automáticamente.
-            </div>
+            <div style={{fontSize:12,color:"#4f7096",marginBottom:12}}>Edita o elimina cualquier registro. El conteo se ajusta automáticamente.</div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {log.filter(e=>e.tipo!=="reset").map((entry,i)=>{
                 const idx=listaAuditoras.findIndex(([id])=>id===entry.auditoraId);
@@ -604,7 +597,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
                     <div style={{flex:1,minWidth:160}}>
                       <div style={{fontSize:12,fontWeight:700,color:"#e8f0fe"}}>{entry.nombre}</div>
                       <div style={{fontSize:11,color:"#4f7096",marginTop:2}}>
-                        {entry.ts} · {entry.servicio||"—"} / {entry.unidad||"—"}{entry.numero?` #${entry.numero}`:""}
+                        {entry.ts} · {entry.servicio||"—"} / {entry.unidad||"—"}{entry.numero?` · ${entry.numero}`:""}
                         {entry.esAjuste&&<span style={{marginLeft:6,background:"#F7B73122",color:"#F7B731",borderRadius:4,padding:"1px 5px",fontSize:9}}>Ajuste</span>}
                       </div>
                     </div>
@@ -623,7 +616,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
           </div>
         )}
 
-        {/* ── HISTORIAL ── */}
         {coordView==="historial"&&(
           <div>
             <div style={{fontSize:14,fontWeight:700,marginBottom:14,color:"#4F8EF7"}}>📅 Historial</div>
@@ -674,17 +666,15 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
           </div>
         )}
 
-        {/* ── CONFIGURACIÓN ── */}
         {coordView==="config"&&(
           <div style={{maxWidth:560}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:14,color:"#4F8EF7"}}>⚙ Configuración</div>
 
-            {/* Logo */}
             <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:13,padding:"15px 17px",marginBottom:13}}>
-              <div style={{fontSize:11,color:"#4f7096",marginBottom:10,textTransform:"uppercase"}}>🖼 Logo de la institución</div>
+              <div style={{fontSize:11,color:"#4f7096",marginBottom:10,textTransform:"uppercase"}}>🖼 Logo</div>
               {config.logoUrl&&(
                 <div style={{marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
-                  <img src={config.logoUrl} alt="Logo actual" style={{width:60,height:60,borderRadius:10,objectFit:"contain",background:"#fff",padding:4}}/>
+                  <img src={config.logoUrl} alt="Logo" style={{width:60,height:60,borderRadius:10,objectFit:"contain",background:"#fff",padding:4}}/>
                   <div>
                     <div style={{fontSize:11,color:"#26DE81",marginBottom:6}}>Logo activo</div>
                     <button onClick={quitarLogo} style={{...mkBtn("#1e1530","#FC5C65"),fontSize:11,border:"1px solid #3d1f2b"}}>Quitar logo</button>
@@ -693,17 +683,13 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               )}
               <div style={{display:"flex",gap:7}}>
                 <input value={logoInput} onChange={e=>setLogoInput(e.target.value)}
-                  placeholder="Pega la URL de tu logo (https://...)"
-                  style={{...inp,flex:1}}/>
+                  placeholder="URL del logo (https://...)" style={{...inp,flex:1}}/>
                 <button onClick={guardarLogo} style={mkBtn("#4F8EF7","#fff")}>Guardar</button>
               </div>
               {logoMsg&&<div style={{fontSize:12,color:logoMsg.startsWith("✅")?"#26DE81":"#FC5C65",marginTop:7}}>{logoMsg}</div>}
-              <div style={{fontSize:10,color:"#4f7096",marginTop:6}}>
-                Sube tu logo a <strong style={{color:"#4F8EF7"}}>imgbb.com</strong> o <strong style={{color:"#4F8EF7"}}>imgur.com</strong> y pega el enlace directo aquí.
-              </div>
+              <div style={{fontSize:10,color:"#4f7096",marginTop:6}}>Sube tu logo en <strong style={{color:"#4F8EF7"}}>imgbb.com</strong> y pega el enlace directo.</div>
             </div>
 
-            {/* Institución */}
             <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:13,padding:"15px 17px",marginBottom:13}}>
               <div style={{fontSize:11,color:"#4f7096",marginBottom:10,textTransform:"uppercase"}}>🏥 Institución</div>
               <div style={{display:"flex",flexDirection:"column",gap:7}}>
@@ -717,7 +703,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               <div style={{fontSize:10,color:"#4f7096",marginTop:5}}>Se guarda al salir del campo</div>
             </div>
 
-            {/* PIN */}
             <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:13,padding:"15px 17px",marginBottom:13}}>
               <div style={{fontSize:11,color:"#4f7096",marginBottom:10,textTransform:"uppercase"}}>🔐 Cambiar PIN</div>
               <div style={{display:"flex",gap:7}}>
@@ -728,13 +713,11 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               {pinMsg&&<div style={{fontSize:12,color:pinMsg.startsWith("✅")?"#26DE81":"#FC5C65",marginTop:7}}>{pinMsg}</div>}
             </div>
 
-            {/* Servicios */}
             <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:13,padding:"15px 17px",marginBottom:13}}>
               <div style={{fontSize:11,color:"#4f7096",marginBottom:10,textTransform:"uppercase"}}>🏷 Servicios</div>
               <div style={{display:"flex",gap:7,marginBottom:10}}>
                 <input value={nuevoSvc} onChange={e=>setNuevoSvc(e.target.value)}
-                  placeholder="Ej: Urgencias, UCI, Ginecología..."
-                  onKeyDown={e=>e.key==="Enter"&&agregarSvc()} style={{...inp,flex:1}}/>
+                  placeholder="Ej: Urgencias, UCI..." onKeyDown={e=>e.key==="Enter"&&agregarSvc()} style={{...inp,flex:1}}/>
                 <button onClick={agregarSvc} style={mkBtn("#00C9A7")}>+ Agregar</button>
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -748,7 +731,6 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               </div>
             </div>
 
-            {/* Auditoras */}
             <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:13,padding:"15px 17px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
                 <div style={{fontSize:11,color:"#4f7096",textTransform:"uppercase"}}>👩‍⚕️ Auditoras</div>
@@ -782,18 +764,14 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
         )}
       </div>
 
-      {/* Modal editar log */}
       {modalEditLog&&(
         <Modal title="✏ Editar registro" onClose={()=>setModalEditLog(null)}>
-          <EditLogForm
-            entry={modalEditLog}
-            listaServicios={listaServicios}
+          <EditLogForm entry={modalEditLog} listaServicios={listaServicios}
             onSave={(cambios)=>guardarEdicionLog(modalEditLog._id,cambios)}
             onCancel={()=>setModalEditLog(null)}/>
         </Modal>
       )}
 
-      {/* Modal auditora */}
       {modalAud!==null&&(
         <Modal title={modalAud==="new"?"Nueva auditora":"Editar auditora"} onClose={()=>setModalAud(null)}>
           <div style={{display:"flex",flexDirection:"column",gap:11}}>
@@ -811,10 +789,8 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
                 :<div style={{display:"flex",flexDirection:"column",gap:7}}>
                   {listaServicios.map(([sid,s])=>(
                     <label key={sid} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13}}>
-                      <input type="checkbox"
-                        checked={(formAud.servicios||[]).includes(sid)}
-                        onChange={()=>toggleSvc(sid)}
-                        style={{accentColor:"#00C9A7",width:15,height:15}}/>
+                      <input type="checkbox" checked={(formAud.servicios||[]).includes(sid)}
+                        onChange={()=>toggleSvc(sid)} style={{accentColor:"#00C9A7",width:15,height:15}}/>
                       {s.nombre}
                     </label>
                   ))}
@@ -822,8 +798,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               }
             </div>
             <button onClick={guardarAud}
-              style={{...mkBtn("linear-gradient(135deg,#00C9A7,#4F8EF7)","#fff"),
-                padding:"11px 0",fontSize:14,borderRadius:10,marginTop:4}}>
+              style={{...mkBtn("linear-gradient(135deg,#00C9A7,#4F8EF7)","#fff"),padding:"11px 0",fontSize:14,borderRadius:10,marginTop:4}}>
               Guardar
             </button>
           </div>
@@ -841,8 +816,6 @@ export default function App(){
   const [historial, setHistorial] = useState({});
   const [log,       setLog]       = useState([]);
   const [connected, setConnected] = useState(true);
-
-  // pantalla: "portada" | "auditora" | "login-coord" | "coord"
   const [pantalla,  setPantalla]  = useState("portada");
 
   useEffect(()=>{
@@ -862,19 +835,13 @@ export default function App(){
 
   if(pantalla==="portada")
     return <Portada config={config} onSelectRol={(rol)=>setPantalla(rol==="auditora"?"auditora":"login-coord")}/>;
-
   if(pantalla==="auditora")
     return <VistaAuditora config={config} auditoras={auditoras} servicios={servicios}
-              historial={historial} log={log} connected={connected}
-              onBack={()=>setPantalla("portada")}/>;
-
+              historial={historial} connected={connected} onBack={()=>setPantalla("portada")}/>;
   if(pantalla==="login-coord")
     return <LoginCoordinadora onLogin={()=>setPantalla("coord")} onBack={()=>setPantalla("portada")}/>;
-
   if(pantalla==="coord")
     return <VistaCoordinadora config={config} auditoras={auditoras} servicios={servicios}
-              historial={historial} log={log} connected={connected}
-              onBack={()=>setPantalla("portada")}/>;
-
+              historial={historial} log={log} connected={connected} onBack={()=>setPantalla("portada")}/>;
   return null;
 }

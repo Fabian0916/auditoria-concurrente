@@ -493,14 +493,62 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               </select>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:12}}>
-            {listaAuditoras.map(([id,a],i)=>(
-              <TarjetaAuditora key={id} id={id} a={a} color={COLORS[i%COLORS.length]}
-                historial={historial} periodo={periodo} registro={registro}
-                setReg={setReg} onRegistrar={registrar}
-                listaServicios={listaServicios} esCoord={true} onAjustar={ajustarConteo}
-                isPulsing={pulse===id}/>
-            ))}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
+            {listaAuditoras.map(([id,a],i)=>{
+              const color=COLORS[i%COLORS.length];
+              const diaHoy=(historial[hoy]&&historial[hoy][id])||{ingresos:0,seguimientos:0};
+              const ing=diaHoy.ingresos||0;
+              const seg=diaHoy.seguimientos||0;
+              const meta=a.meta||30;
+              const pct=meta>0?Math.round((ing/meta)*100):0;
+              const {avgPct,avgIngresos,diasContados}=calcPromedio(historial,id,{[id]:a},diasPeriodo);
+              return(
+                <div key={id} style={{background:"linear-gradient(145deg,#0f1f35,#0d1a2d)",border:"1px solid #1e2d45",borderRadius:16,padding:"16px 18px"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:10,color,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>{a.nombre}</div>
+                      <div style={{fontSize:42,fontWeight:800,lineHeight:1,letterSpacing:"-1px",color:pct>=100?"#26DE81":pct>=70?"#F7B731":"#e8f0fe"}}>{pct}%</div>
+                      <div style={{fontSize:10,color:"#4f7096",marginTop:2}}>cumplimiento · meta {meta}</div>
+                    </div>
+                    <div style={{position:"relative"}}>
+                      <RadialProgress pct={pct} color={pct>=100?"#26DE81":color} size={64}/>
+                      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:pct>=100?"#26DE81":color}}>{pct}%</div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+                    <div style={{background:"#0b1523",borderRadius:9,padding:"8px 12px",border:"1px solid #1e2d45"}}>
+                      <div style={{fontSize:9,color:"#00C9A7",textTransform:"uppercase",fontWeight:700}}>Ingresos (I)</div>
+                      <div style={{fontSize:26,fontWeight:800,color:"#00C9A7",lineHeight:1,marginTop:2}}>{ing}</div>
+                      <div style={{fontSize:9,color:"#4f7096",marginTop:1}}>de {meta} hoy</div>
+                    </div>
+                    <div style={{background:"#0b1523",borderRadius:9,padding:"8px 12px",border:"1px solid #1e2d45"}}>
+                      <div style={{fontSize:9,color:"#F7B731",textTransform:"uppercase",fontWeight:700}}>Seguim. (S)</div>
+                      <div style={{fontSize:26,fontWeight:800,color:"#F7B731",lineHeight:1,marginTop:2}}>{seg}</div>
+                      <div style={{fontSize:9,color:"#4f7096",marginTop:1}}>hoy</div>
+                    </div>
+                  </div>
+                  <div style={{height:5,background:"#1e2d45",borderRadius:99,overflow:"hidden",marginBottom:10}}>
+                    <div style={{height:"100%",borderRadius:99,background:pct>=100?"#26DE81":color,width:`${Math.min(pct,100)}%`,transition:"width 0.5s ease"}}/>
+                  </div>
+                  {diasContados>0&&(
+                    <div style={{background:"#0b152388",border:"1px solid #1e2d4577",borderRadius:8,padding:"7px 10px",marginBottom:10}}>
+                      <div style={{fontSize:9,color:"#4f7096",textTransform:"uppercase",marginBottom:3}}>Prom. {PERIODOS.find(p=>p.id===periodo)?.label||"periodo"}</div>
+                      <div style={{display:"flex",gap:14}}>
+                        <div><div style={{fontSize:16,fontWeight:800,color:"#4F8EF7"}}>{avgPct}%</div><div style={{fontSize:9,color:"#4f7096"}}>% cumpl. prom.</div></div>
+                        <div><div style={{fontSize:16,fontWeight:800,color:"#4F8EF7"}}>{avgIngresos}</div><div style={{fontSize:9,color:"#4f7096"}}>ing. prom./dia</div></div>
+                        <div><div style={{fontSize:16,fontWeight:800,color:"#4f7096"}}>{diasContados}</div><div style={{fontSize:9,color:"#4f7096"}}>dias</div></div>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:10,color:"#4f7096",flex:1}}>Ajuste manual:</span>
+                    <button onClick={()=>ajustarConteo(id,-1)} style={{background:"#1e2d45",color:"#FC5C65",border:"none",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontSize:16,fontWeight:700}}>-</button>
+                    <button onClick={()=>ajustarConteo(id,1)} style={{background:"#1e2d45",color:"#26DE81",border:"none",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontSize:16,fontWeight:700}}>+</button>
+                  </div>
+                  {pct>=100&&<div style={{marginTop:8,textAlign:"center",fontSize:11,color:"#26DE81",fontWeight:700}}>Meta cumplida</div>}
+                </div>
+              );
+            })}
           </div>
         </>)}
 

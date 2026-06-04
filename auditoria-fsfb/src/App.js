@@ -14,12 +14,17 @@ const PERIODOS = [
   {id:"anual",     label:"Último año",       dias:365},
 ];
 
-const hoyISO     = () => new Date().toISOString().slice(0,10);
+// Fecha local Colombia (UTC-5) — evita que registros nocturnos cambien de día
+const hoyISO = () => {
+  const now = new Date();
+  const col = new Date(now.getTime() - 5*60*60*1000);
+  return col.toISOString().slice(0,10);
+};
 const tsNow      = () => new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const fechaCorta = () => new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"});
 const fechaLarga = (iso) => { try{ return new Date(iso+"T12:00:00").toLocaleDateString("es-CO",{weekday:"long",day:"2-digit",month:"long",year:"numeric"}); }catch{ return iso; } };
 const fechaHumana= (iso) => { try{ return new Date(iso+"T12:00:00").toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"numeric"}); }catch{ return iso; } };
-const diasAtras  = (n) => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
+const diasAtras  = (n) => { const d=new Date(new Date().getTime()-5*60*60*1000); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
 
 const inp = { background:"#0b1523",border:"1px solid #1e2d45",borderRadius:8,padding:"8px 11px",color:"#e8f0fe",fontSize:13,outline:"none",width:"100%",boxSizing:"border-box" };
 const mkBtn = (bg,fg="#0b1523",extra={}) => ({ background:bg,color:fg,border:"none",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:12,fontWeight:700,...extra });
@@ -73,11 +78,19 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
   const [servicio,setServicio]=useState(entry.servicio||"");
   const [unidad,setUnidad]=useState(entry.unidad||"Cama");
   const [numero,setNumero]=useState(entry.numero||"");
+  const [fecha,setFecha]=useState(entry.fecha||hoyISO());
   return(
     <div style={{display:"flex",flexDirection:"column",gap:11}}>
       <div style={{fontSize:12,color:"#4f7096"}}>Auditora: <strong style={{color:"#e8f0fe"}}>{entry.nombre}</strong></div>
-      <div style={{fontSize:12,color:"#4f7096"}}>Fecha: {fechaHumana(entry.fecha||hoyISO())} · {entry.ts}</div>
       <div style={{fontSize:12,color:"#4f7096"}}>Tipo: <strong style={{color:entry.tipoReg==="I"?"#00C9A7":"#F7B731"}}>{entry.tipoReg==="I"?"Ingreso (I)":"Seguimiento (S)"}</strong></div>
+      <div>
+        <div style={{fontSize:11,color:"#4f7096",marginBottom:5,textTransform:"uppercase"}}>Fecha de la auditoria</div>
+        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
+          style={{...inp,colorScheme:"dark"}}/>
+        <div style={{fontSize:10,color:"#F7B731",marginTop:4}}>
+          Hora original: {entry.ts} — Al cambiar la fecha, el registro se mueve a ese dia
+        </div>
+      </div>
       <select value={servicio} onChange={e=>setServicio(e.target.value)} style={inp}>
         <option value="">-- Servicio --</option>
         {listaServicios.map(([sid,s])=><option key={sid} value={s.nombre}>{s.nombre}</option>)}
@@ -87,7 +100,7 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
       </select>
       <input type="text" placeholder="ID / N (ej. 12A, UCI-3)" value={numero} onChange={e=>setNumero(e.target.value)} maxLength={20} style={inp}/>
       <div style={{display:"flex",gap:8,marginTop:4}}>
-        <button onClick={()=>onSave({servicio,unidad,numero,auditoraId:entry.auditoraId})}
+        <button onClick={()=>onSave({servicio,unidad,numero,fecha,auditoraId:entry.auditoraId})}
           style={{...mkBtn("linear-gradient(135deg,#00C9A7,#4F8EF7)","#fff"),flex:2,padding:"10px 0",fontSize:13,borderRadius:10}}>Guardar</button>
         <button onClick={onCancel} style={{...mkBtn("#1e2d45","#4f7096"),flex:1,padding:"10px 0",fontSize:13,borderRadius:10}}>Cancelar</button>
       </div>
@@ -393,7 +406,36 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
       await update(ref(db),{[`historial/${dia}/${entry.auditoraId}/ingresos`]:nuevos,[`auditoras/${entry.auditoraId}/historias`]:nuevos});
     }
   };
-  const guardarEdicionLog=async(logId,cambios)=>{await update(ref(db,`log/${logId}`),cambios);setModalEditLog(null);};
+  const guardarEdicionLog=async(logId,cambios)=>{
+    const entry = modalEditLog;
+    const fechaAnterior = entry.fecha || hoyISO();
+    const fechaNueva = cambios.fecha || fechaAnterior;
+    const audId = cambios.auditoraId || entry.auditoraId;
+
+    // Actualizar el log
+    await update(ref(db,`log/${logId}`),cambios);
+
+    // Si cambió la fecha Y es un Ingreso, mover el conteo entre días
+    if(fechaNueva !== fechaAnterior && entry.tipoReg==="I" && audId){
+      // Restar del día anterior
+      const diaAnteriorData=(historial[fechaAnterior]&&historial[fechaAnterior][audId])||{ingresos:0};
+      const nuevosAnterior=Math.max(0,(diaAnteriorData.ingresos||0)-1);
+      await update(ref(db,`historial/${fechaAnterior}/${audId}`),{ingresos:nuevosAnterior});
+
+      // Sumar al día nuevo
+      const diaNuevoData=(historial[fechaNueva]&&historial[fechaNueva][audId])||{ingresos:0};
+      await update(ref(db,`historial/${fechaNueva}/${audId}`),{ingresos:(diaNuevoData.ingresos||0)+1});
+
+      // Actualizar historias (refleja el día actual)
+      const hoy=hoyISO();
+      const diaHoyData=(historial[hoy]&&historial[hoy][audId])||{ingresos:0};
+      let ingresosHoy=diaHoyData.ingresos||0;
+      if(fechaAnterior===hoy) ingresosHoy=Math.max(0,ingresosHoy-1);
+      if(fechaNueva===hoy) ingresosHoy=ingresosHoy+1;
+      await update(ref(db,`auditoras/${audId}`),{historias:ingresosHoy});
+    }
+    setModalEditLog(null);
+  };
   const cambiarPin=async()=>{
     if(newPin.length<4){setPinMsg("Min. 4 caracteres.");return;}
     await guardarConfig("pin",newPin);setNewPin("");setPinMsg("PIN actualizado.");setTimeout(()=>setPinMsg(""),3000);

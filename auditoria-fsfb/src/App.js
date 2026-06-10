@@ -79,18 +79,50 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
   const [unidad,setUnidad]=useState(entry.unidad||"Cama");
   const [numero,setNumero]=useState(entry.numero||"");
   const [fecha,setFecha]=useState(entry.fecha||hoyISO());
+  const [tipoReg,setTipoReg]=useState(entry.tipoReg||"I");
+
+  const tipoColor = tipoReg==="I" ? "#00C9A7" : "#F7B731";
+
   return(
     <div style={{display:"flex",flexDirection:"column",gap:11}}>
       <div style={{fontSize:12,color:"#4f7096"}}>Auditora: <strong style={{color:"#e8f0fe"}}>{entry.nombre}</strong></div>
-      <div style={{fontSize:12,color:"#4f7096"}}>Tipo: <strong style={{color:entry.tipoReg==="I"?"#00C9A7":"#F7B731"}}>{entry.tipoReg==="I"?"Ingreso (I)":"Seguimiento (S)"}</strong></div>
+
+      {/* Tipo editable */}
+      <div>
+        <div style={{fontSize:11,color:"#4f7096",marginBottom:6,textTransform:"uppercase"}}>Tipo de registro</div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setTipoReg("I")} style={{
+            flex:1,padding:"10px 0",borderRadius:10,cursor:"pointer",fontWeight:800,fontSize:13,border:"2px solid",
+            borderColor:tipoReg==="I"?"#00C9A7":"#1e2d45",
+            background:tipoReg==="I"?"#00C9A722":"#0b1523",
+            color:tipoReg==="I"?"#00C9A7":"#4f7096"}}>
+            ✚ Ingreso (I)
+            <div style={{fontSize:9,fontWeight:400,marginTop:2,color:tipoReg==="I"?"#00C9A7":"#4f7096"}}>Cuenta para la meta</div>
+          </button>
+          <button onClick={()=>setTipoReg("S")} style={{
+            flex:1,padding:"10px 0",borderRadius:10,cursor:"pointer",fontWeight:800,fontSize:13,border:"2px solid",
+            borderColor:tipoReg==="S"?"#F7B731":"#1e2d45",
+            background:tipoReg==="S"?"#F7B73122":"#0b1523",
+            color:tipoReg==="S"?"#F7B731":"#4f7096"}}>
+            ↺ Seguimiento (S)
+            <div style={{fontSize:9,fontWeight:400,marginTop:2,color:tipoReg==="S"?"#F7B731":"#4f7096"}}>Solo volumetria</div>
+          </button>
+        </div>
+        {tipoReg !== entry.tipoReg && (
+          <div style={{fontSize:10,color:"#FC5C65",marginTop:5,padding:"4px 8px",background:"#FC5C6522",borderRadius:6}}>
+            ⚠ Cambiar de {entry.tipoReg==="I"?"Ingreso a Seguimiento":"Seguimiento a Ingreso"} ajustara el conteo de la auditora en ese dia
+          </div>
+        )}
+      </div>
+
+      {/* Fecha editable */}
       <div>
         <div style={{fontSize:11,color:"#4f7096",marginBottom:5,textTransform:"uppercase"}}>Fecha de la auditoria</div>
         <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)}
           style={{...inp,colorScheme:"dark"}}/>
-        <div style={{fontSize:10,color:"#F7B731",marginTop:4}}>
-          Hora original: {entry.ts} — Al cambiar la fecha, el registro se mueve a ese dia
-        </div>
+        <div style={{fontSize:10,color:"#4f7096",marginTop:3}}>Hora original: {entry.ts}</div>
       </div>
+
       <select value={servicio} onChange={e=>setServicio(e.target.value)} style={inp}>
         <option value="">-- Servicio --</option>
         {listaServicios.map(([sid,s])=><option key={sid} value={s.nombre}>{s.nombre}</option>)}
@@ -100,7 +132,7 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
       </select>
       <input type="text" placeholder="ID / N (ej. 12A, UCI-3)" value={numero} onChange={e=>setNumero(e.target.value)} maxLength={20} style={inp}/>
       <div style={{display:"flex",gap:8,marginTop:4}}>
-        <button onClick={()=>onSave({servicio,unidad,numero,fecha,auditoraId:entry.auditoraId})}
+        <button onClick={()=>onSave({servicio,unidad,numero,fecha,tipoReg,auditoraId:entry.auditoraId})}
           style={{...mkBtn("linear-gradient(135deg,#00C9A7,#4F8EF7)","#fff"),flex:2,padding:"10px 0",fontSize:13,borderRadius:10}}>Guardar</button>
         <button onClick={onCancel} style={{...mkBtn("#1e2d45","#4f7096"),flex:1,padding:"10px 0",fontSize:13,borderRadius:10}}>Cancelar</button>
       </div>
@@ -409,30 +441,48 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
   const guardarEdicionLog=async(logId,cambios)=>{
     const entry = modalEditLog;
     const fechaAnterior = entry.fecha || hoyISO();
-    const fechaNueva = cambios.fecha || fechaAnterior;
-    const audId = cambios.auditoraId || entry.auditoraId;
+    const fechaNueva    = cambios.fecha || fechaAnterior;
+    const tipoAnterior  = entry.tipoReg || "I";
+    const tipoNuevo     = cambios.tipoReg || tipoAnterior;
+    const audId         = cambios.auditoraId || entry.auditoraId;
+    const hoy           = hoyISO();
 
-    // Actualizar el log
-    await update(ref(db,`log/${logId}`),cambios);
+    // Guardar cambios en el log (incluye tipoReg y fecha nuevos)
+    await update(ref(db,`log/${logId}`),{...cambios, delta: tipoNuevo==="I" ? 1 : 0});
 
-    // Si cambió la fecha Y es un Ingreso, mover el conteo entre días
-    if(fechaNueva !== fechaAnterior && entry.tipoReg==="I" && audId){
-      // Restar del día anterior
-      const diaAnteriorData=(historial[fechaAnterior]&&historial[fechaAnterior][audId])||{ingresos:0};
-      const nuevosAnterior=Math.max(0,(diaAnteriorData.ingresos||0)-1);
-      await update(ref(db,`historial/${fechaAnterior}/${audId}`),{ingresos:nuevosAnterior});
+    // Calcular ajuste neto de ingresos por día
+    // Era Ingreso en fechaAnterior → quitar 1 de ese día
+    // Es  Ingreso en fechaNueva   → sumar 1 a ese día
+    const eraIngreso = tipoAnterior === "I";
+    const esIngreso  = tipoNuevo   === "I";
 
-      // Sumar al día nuevo
-      const diaNuevoData=(historial[fechaNueva]&&historial[fechaNueva][audId])||{ingresos:0};
-      await update(ref(db,`historial/${fechaNueva}/${audId}`),{ingresos:(diaNuevoData.ingresos||0)+1});
+    if(audId){
+      const updates = {};
 
-      // Actualizar historias (refleja el día actual)
-      const hoy=hoyISO();
-      const diaHoyData=(historial[hoy]&&historial[hoy][audId])||{ingresos:0};
-      let ingresosHoy=diaHoyData.ingresos||0;
-      if(fechaAnterior===hoy) ingresosHoy=Math.max(0,ingresosHoy-1);
-      if(fechaNueva===hoy) ingresosHoy=ingresosHoy+1;
-      await update(ref(db,`auditoras/${audId}`),{historias:ingresosHoy});
+      if(eraIngreso){
+        // Restar del día original
+        const d=(historial[fechaAnterior]&&historial[fechaAnterior][audId])||{ingresos:0};
+        updates[`historial/${fechaAnterior}/${audId}/ingresos`] = Math.max(0,(d.ingresos||0)-1);
+      }
+      if(esIngreso){
+        // Sumar al día nuevo
+        const d=(historial[fechaNueva]&&historial[fechaNueva][audId])||{ingresos:0};
+        // Si es el mismo día y ya restamos, usar el valor ya ajustado
+        const base = (fechaNueva===fechaAnterior && eraIngreso)
+          ? Math.max(0,((historial[fechaAnterior]&&historial[fechaAnterior][audId]?.ingresos)||0)-1)
+          : (d.ingresos||0);
+        updates[`historial/${fechaNueva}/${audId}/ingresos`] = base + 1;
+      }
+
+      if(Object.keys(updates).length > 0){
+        await update(ref(db), updates);
+        // Recalcular historias del día actual
+        const dHoy = (historial[hoy]&&historial[hoy][audId])||{ingresos:0};
+        let ingHoy = dHoy.ingresos||0;
+        if(eraIngreso && fechaAnterior===hoy) ingHoy = Math.max(0, ingHoy-1);
+        if(esIngreso  && fechaNueva===hoy)    ingHoy = ingHoy+1;
+        await update(ref(db,`auditoras/${audId}`),{historias: ingHoy});
+      }
     }
     setModalEditLog(null);
   };

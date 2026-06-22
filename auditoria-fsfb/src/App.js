@@ -374,6 +374,9 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
   const [modalEditLog,setModalEditLog]=useState(null);
   const [filtroAud,setFiltroAud]=useState("todas");
   const [filtroRango,setFiltroRango]=useState("semana");
+  const [filtroLogFecha,setFiltroLogFecha]=useState("");
+  const [filtroLogAud,setFiltroLogAud]=useState("todas");
+  const [filtroLogTipo,setFiltroLogTipo]=useState("todos");
   const [nuevoSvc,setNuevoSvc]=useState("");
   const [formAud,setFormAud]=useState({nombre:"",meta:30,servicios:[]});
   const [newPin,setNewPin]=useState("");
@@ -644,15 +647,63 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
           </div>
         </>)}
 
-        {coordView==="log"&&(
+        {coordView==="log"&&(()=>{
+          const logFiltrado = log.filter(e=>{
+            if(e.tipoReg==="reset") return false;
+            if(filtroLogAud!=="todas" && e.auditoraId!==filtroLogAud) return false;
+            if(filtroLogTipo!=="todos" && e.tipoReg!==filtroLogTipo) return false;
+            if(filtroLogFecha && (e.fecha||"")!==filtroLogFecha) return false;
+            return true;
+          });
+          return(
           <div>
             <div style={{fontSize:14,fontWeight:700,marginBottom:12,color:"#4F8EF7"}}>📝 Registros individuales</div>
-            <div style={{fontSize:12,color:"#4f7096",marginBottom:12}}>
-              <span style={{background:"#00C9A722",color:"#00C9A7",borderRadius:5,padding:"2px 7px",marginRight:6,fontWeight:700}}>I</span>Ingreso — cuenta para meta
-              <span style={{background:"#F7B73122",color:"#F7B731",borderRadius:5,padding:"2px 7px",marginLeft:10,marginRight:6,fontWeight:700}}>S</span>Seguimiento — volumetria
+
+            {/* Leyenda */}
+            <div style={{fontSize:12,color:"#4f7096",marginBottom:10}}>
+              <span style={{background:"#00C9A722",color:"#00C9A7",borderRadius:5,padding:"2px 7px",marginRight:6,fontWeight:700}}>I</span>Ingreso — meta
+              <span style={{background:"#F7B73122",color:"#F7B731",borderRadius:5,padding:"2px 7px",marginLeft:10,marginRight:6,fontWeight:700}}>S</span>Seguimiento
             </div>
+
+            {/* Filtros */}
+            <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:12,padding:"12px 14px"}}>
+              <div style={{display:"flex",flexDirection:"column",gap:4,flex:1,minWidth:140}}>
+                <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase"}}>Auditora</div>
+                <select value={filtroLogAud} onChange={e=>setFiltroLogAud(e.target.value)} style={{...inp,fontSize:12}}>
+                  <option value="todas">Todas</option>
+                  {listaAuditoras.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
+                </select>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:4,minWidth:120}}>
+                <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase"}}>Tipo</div>
+                <select value={filtroLogTipo} onChange={e=>setFiltroLogTipo(e.target.value)} style={{...inp,fontSize:12}}>
+                  <option value="todos">Todos</option>
+                  <option value="I">Ingreso (I)</option>
+                  <option value="S">Seguimiento (S)</option>
+                </select>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:4,minWidth:140}}>
+                <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase"}}>Fecha especifica</div>
+                <input type="date" value={filtroLogFecha} onChange={e=>setFiltroLogFecha(e.target.value)}
+                  style={{...inp,fontSize:12,colorScheme:"dark"}}/>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:4,justifyContent:"flex-end"}}>
+                <button onClick={()=>{setFiltroLogFecha("");setFiltroLogAud("todas");setFiltroLogTipo("todos");}}
+                  style={{...mkBtn("#1e2d45","#4f7096"),fontSize:11,padding:"8px 12px"}}>
+                  Limpiar filtros
+                </button>
+              </div>
+            </div>
+
+            {/* Contador */}
+            <div style={{fontSize:11,color:"#4f7096",marginBottom:8}}>
+              Mostrando <strong style={{color:"#e8f0fe"}}>{logFiltrado.length}</strong> de {log.filter(e=>e.tipoReg!=="reset").length} registros
+              {filtroLogFecha&&<span style={{marginLeft:6,color:"#4F8EF7"}}>· {fechaHumana(filtroLogFecha)}</span>}
+            </div>
+
+            {/* Lista */}
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {log.filter(e=>e.tipoReg!=="reset").map((entry,i)=>{
+              {logFiltrado.map((entry,i)=>{
                 const idx=listaAuditoras.findIndex(([id])=>id===entry.auditoraId);
                 const color=COLORS[idx>=0?idx%COLORS.length:0];
                 const esI=entry.tipoReg==="I";
@@ -675,10 +726,17 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
                   </div>
                 );
               })}
-              {log.filter(e=>e.tipoReg!=="reset").length===0&&<div style={{fontSize:13,color:"#4f7096",textAlign:"center",padding:"30px 0"}}>No hay registros.</div>}
+              {logFiltrado.length===0&&(
+                <div style={{fontSize:13,color:"#4f7096",textAlign:"center",padding:"30px 0"}}>
+                  {log.filter(e=>e.tipoReg!=="reset").length===0
+                    ?"No hay registros aun."
+                    :"Ningun registro coincide con los filtros aplicados."}
+                </div>
+              )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {coordView==="historial"&&(
           <div>
@@ -842,7 +900,7 @@ export default function App(){
       [ref(db,"auditoras"),s=>{setAuditoras(s.val()||{});setConnected(true);}],
       [ref(db,"servicios"),s=>setServicios(s.val()||{})],
       [ref(db,"historial"),s=>setHistorial(s.val()||{})],
-      [ref(db,"log"),s=>{const d=s.val();setLog(d?Object.entries(d).map(([id,v])=>({...v,_id:id})).sort((a,b)=>b.ts_ms-a.ts_ms).slice(0,300):[]); }],
+      [ref(db,"log"),s=>{const d=s.val();setLog(d?Object.entries(d).map(([id,v])=>({...v,_id:id})).sort((a,b)=>b.ts_ms-a.ts_ms).slice(0,2000):[]); }],
     ];
     const unsubs=pairs.map(([r,cb])=>onValue(r,cb,()=>setConnected(false)));
     return()=>unsubs.forEach(u=>u());

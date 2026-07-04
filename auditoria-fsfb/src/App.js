@@ -29,22 +29,24 @@ const diasAtras  = (n) => { const d=new Date(new Date().getTime()-5*60*60*1000);
 const inp = { background:"#0b1523",border:"1px solid #1e2d45",borderRadius:8,padding:"8px 11px",color:"#e8f0fe",fontSize:13,outline:"none",width:"100%",boxSizing:"border-box" };
 const mkBtn = (bg,fg="#0b1523",extra={}) => ({ background:bg,color:fg,border:"none",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:12,fontWeight:700,...extra });
 
-function calcPromedio(historial, auditoraId, auditoras, diasPeriodo) {
-  const desde = diasAtras(diasPeriodo);
-  const hoy = hoyISO();
-  const dias = Object.entries(historial)
-    .filter(([d]) => d >= desde && d <= hoy)
+function calcPromedio(historial, auditoraId, auditoras, desde, hasta) {
+  const diasArr = Object.entries(historial)
+    .filter(([d]) => d >= desde && d <= hasta)
     .map(([, dData]) => {
       const data = dData[auditoraId]; if(!data) return null;
       const ingresos = data.ingresos || 0;
+      const seguimientos = data.seguimientos || 0;
       const meta = auditoras[auditoraId]?.meta || 30;
-      return { ingresos, pct: meta > 0 ? Math.round((ingresos/meta)*100) : 0 };
+      return { ingresos, seguimientos, pct: meta > 0 ? Math.round((ingresos/meta)*100) : 0 };
     }).filter(Boolean);
-  if(dias.length === 0) return { avgPct:0, avgIngresos:0, diasContados:0 };
+  if(diasArr.length === 0) return { avgPct:0, avgIngresos:0, avgSeguimientos:0, diasContados:0, totalIngresos:0, totalSeguimientos:0 };
   return {
-    avgPct:      Math.round(dias.reduce((s,d)=>s+d.pct,0)/dias.length),
-    avgIngresos: Math.round(dias.reduce((s,d)=>s+d.ingresos,0)/dias.length),
-    diasContados: dias.length
+    avgPct:           Math.round(diasArr.reduce((s,d)=>s+d.pct,0)/diasArr.length),
+    avgIngresos:      Math.round(diasArr.reduce((s,d)=>s+d.ingresos,0)/diasArr.length),
+    avgSeguimientos:  Math.round(diasArr.reduce((s,d)=>s+d.seguimientos,0)/diasArr.length),
+    diasContados:     diasArr.length,
+    totalIngresos:    diasArr.reduce((s,d)=>s+d.ingresos,0),
+    totalSeguimientos:diasArr.reduce((s,d)=>s+d.seguimientos,0),
   };
 }
 
@@ -210,7 +212,7 @@ function Header({config,esCoord,connected,onBack,extraButtons}){
   );
 }
 
-function TarjetaAuditora({id,a,color,historial,periodo,registro,setReg,onRegistrar,listaServicios,esCoord,onAjustar,isPulsing}){
+function TarjetaAuditora({id,a,color,historial,desde,hasta,registro,setReg,onRegistrar,listaServicios,esCoord,onAjustar,isPulsing}){
   const hoy       = hoyISO();
   const diaHoy    = (historial[hoy]&&historial[hoy][id])||{ingresos:0,seguimientos:0};
   const ingresos  = diaHoy.ingresos   ||0;
@@ -218,8 +220,7 @@ function TarjetaAuditora({id,a,color,historial,periodo,registro,setReg,onRegistr
   const meta      = a.meta||30;
   const pct       = meta>0?Math.round((ingresos/meta)*100):0;
   const reg       = registro[id]||{};
-  const diasPeriodo = PERIODOS.find(p=>p.id===periodo)?.dias||7;
-  const {avgPct,avgIngresos,diasContados} = calcPromedio(historial,id,{[id]:a},diasPeriodo);
+  const {avgPct,avgIngresos,avgSeguimientos,diasContados} = calcPromedio(historial,id,{[id]:a},desde,hasta);
 
   return(
     <div style={{background:"linear-gradient(145deg,#0f1f35,#0d1a2d)",border:`1px solid ${isPulsing?color:"#1e2d45"}`,borderRadius:16,padding:"15px 17px",transition:"all 0.3s",transform:isPulsing?"scale(1.02)":"scale(1)",boxShadow:isPulsing?`0 0 18px ${color}44`:"none"}}>
@@ -244,7 +245,7 @@ function TarjetaAuditora({id,a,color,historial,periodo,registro,setReg,onRegistr
         </div>
         {diasContados>0&&(
           <div style={{flex:1,background:"#0b1523",borderRadius:8,padding:"6px 10px",border:"1px solid #1e2d45"}}>
-            <div style={{fontSize:9,color:"#4f7096",textTransform:"uppercase"}}>Prom. {PERIODOS.find(p=>p.id===periodo)?.label?.replace("Ultimo","")?.replace("Última","")?.trim()||""}</div>
+            <div style={{fontSize:9,color:"#4f7096",textTransform:"uppercase"}}>Prom. {desde} → {hasta}</div>
             <div style={{fontSize:13,fontWeight:800,color:"#4F8EF7",marginTop:1}}>{avgPct}% <span style={{fontSize:10,color:"#4f7096",fontWeight:400}}>({avgIngresos} I/día)</span></div>
           </div>
         )}
@@ -383,16 +384,33 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
   const [pinMsg,setPinMsg]=useState("");
   const [logoInput,setLogoInput]=useState("");
   const [logoMsg,setLogoMsg]=useState("");
-  const [periodo,setPeriodo]=useState("semana");
+  const hoy=hoyISO();
+  // Rango libre de fechas
+  const [rangoDesde,setRangoDesde]=useState(diasAtras(6));
+  const [rangoHasta,setRangoHasta]=useState(hoy);
 
   const listaAuditoras=Object.entries(auditoras);
   const listaServicios=Object.entries(servicios);
-  const hoy=hoyISO();
-  const totalI=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.ingresos)||0),0);
-  const totalS=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.seguimientos)||0),0);
   const totalMeta=listaAuditoras.reduce((s,[,a])=>s+(a.meta||30),0);
-  const pctGlobal=totalMeta>0?Math.round((totalI/totalMeta)*100):0;
-  const diasPeriodo=PERIODOS.find(p=>p.id===periodo)?.dias||7;
+
+  // KPIs globales del período
+  const kpiPeriodo = listaAuditoras.reduce((acc,[id,a])=>{
+    const p=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
+    acc.totalI+=p.totalIngresos; acc.totalS+=p.totalSeguimientos;
+    acc.sumPct+=p.avgPct; acc.diasMax=Math.max(acc.diasMax,p.diasContados);
+    return acc;
+  },{totalI:0,totalS:0,sumPct:0,diasMax:0});
+  const avgPctGlobal=listaAuditoras.length>0?Math.round(kpiPeriodo.sumPct/listaAuditoras.length):0;
+
+  // Para el día de hoy (contador actual)
+  const totalIHoy=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.ingresos)||0),0);
+  const totalSHoy=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.seguimientos)||0),0);
+  const pctGlobalHoy=totalMeta>0?Math.round((totalIHoy/totalMeta)*100):0;
+
+  const setQuickRange=(dias)=>{
+    setRangoDesde(diasAtras(dias-1));
+    setRangoHasta(hoy);
+  };
 
   const guardarConfig=async(campo,valor)=>await update(ref(db,"config"),{[campo]:valor});
 
@@ -510,7 +528,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
         const d=historial[dia]&&historial[dia][id]; if(!d) return;
         const ing=d.ingresos||0,seg=d.seguimientos||0,meta=a.meta||30;
         const pct=meta>0?Math.round((ing/meta)*100):0;
-        const prom=calcPromedio(historial,id,{[id]:a},diasPeriodo);
+        const prom=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
         rows1.push([fechaHumana(dia),a.nombre,ing,seg,meta,pct/100,prom.avgIngresos,prom.avgPct/100]);
       });
     });
@@ -542,8 +560,8 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
   };
 
   const getHistFiltrado=()=>{
-    const desde=diasAtras(PERIODOS.find(p=>p.id===filtroRango)?.dias||7);
-    return Object.entries(historial).filter(([d])=>d>=desde&&d<=hoy).sort(([a],[b])=>b.localeCompare(a));
+    const histDesde2=diasAtras(PERIODOS.find(p=>p.id===filtroRango)?.dias||7);
+    return Object.entries(historial).filter(([d])=>d>=histDesde2&&d<=hoy).sort(([a],[b])=>b.localeCompare(a));
   };
 
   const navItems=[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"log",label:"Registros",icon:"📝"},{id:"historial",label:"Historial",icon:"📅"},{id:"config",label:"Config",icon:"⚙"}];
@@ -565,86 +583,191 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
       <div style={{padding:"16px 18px"}}>
 
         {coordView==="dashboard"&&(<>
-          <div style={{background:"linear-gradient(135deg,#0f1f35,#111f33)",border:"1px solid #1e2d45",borderRadius:16,padding:"16px 20px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-            <div>
-              <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Ingresos hoy · meta grupal</div>
-              <div style={{fontSize:42,fontWeight:800,color:"#00C9A7",lineHeight:1,letterSpacing:"-2px"}}>{totalI}<span style={{fontSize:14,color:"#4f7096",fontWeight:400,marginLeft:8}}>/ {totalMeta}</span></div>
-              <div style={{marginTop:7,height:5,background:"#1e2d45",borderRadius:99,width:220,overflow:"hidden"}}>
-                <div style={{height:"100%",borderRadius:99,background:pctGlobal>=100?"#26DE81":"linear-gradient(90deg,#00C9A7,#4F8EF7)",width:`${Math.min(pctGlobal,100)}%`,transition:"width 0.6s ease"}}/>
+
+          {/* ── Selector de rango de fechas ── */}
+          <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:14,padding:"14px 18px",marginBottom:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:10}}>
+              <div style={{fontSize:11,color:"#4f7096",textTransform:"uppercase",letterSpacing:"0.06em",whiteSpace:"nowrap"}}>Rango de fechas</div>
+              <div style={{display:"flex",alignItems:"center",gap:8,flex:1,flexWrap:"wrap"}}>
+                <input type="date" value={rangoDesde} onChange={e=>setRangoDesde(e.target.value)}
+                  style={{...inp,width:150,fontSize:12,colorScheme:"dark"}}/>
+                <span style={{fontSize:12,color:"#4f7096"}}>→</span>
+                <input type="date" value={rangoHasta} onChange={e=>setRangoHasta(e.target.value)}
+                  style={{...inp,width:150,fontSize:12,colorScheme:"dark"}}/>
               </div>
-              <div style={{fontSize:10,color:"#4f7096",marginTop:4}}>{pctGlobal}% meta grupal</div>
             </div>
-            <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-              <div style={{background:"#0b1523",border:"1px solid #1e2d45",borderRadius:11,padding:"10px 14px",textAlign:"center"}}>
-                <div style={{fontSize:9,color:"#4f7096",textTransform:"uppercase"}}>Seguim. hoy</div>
-                <div style={{fontSize:22,fontWeight:800,color:"#F7B731",marginTop:2}}>{totalS}</div>
-              </div>
-              <div style={{background:"#0b1523",border:"1px solid #1e2d45",borderRadius:11,padding:"10px 14px",textAlign:"center"}}>
-                <div style={{fontSize:9,color:"#4f7096",textTransform:"uppercase"}}>Auditoras</div>
-                <div style={{fontSize:22,fontWeight:800,marginTop:2}}>{listaAuditoras.length}</div>
-              </div>
-              <select value={periodo} onChange={e=>setPeriodo(e.target.value)} style={{...inp,width:"auto",fontSize:11}}>
-                {PERIODOS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
-              </select>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {[{l:"Hoy",d:0},{l:"Ayer",d:1,solo:true},{l:"Esta semana",d:6},{l:"Este mes",d:29},{l:"Trimestre",d:89},{l:"Semestre",d:179},{l:"Este año",d:364}].map(q=>(
+                <button key={q.l} onClick={()=>{
+                  if(q.solo){ setRangoDesde(diasAtras(1)); setRangoHasta(diasAtras(1)); }
+                  else { setRangoDesde(diasAtras(q.d)); setRangoHasta(hoy); }
+                }} style={{
+                  background: rangoDesde===diasAtras(q.solo?1:q.d)&&rangoHasta===(q.solo?diasAtras(1):hoy)?"#4F8EF722":"#1e2d45",
+                  color: rangoDesde===diasAtras(q.solo?1:q.d)&&rangoHasta===(q.solo?diasAtras(1):hoy)?"#4F8EF7":"#8faec4",
+                  border:"1px solid #2a3d55",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600
+                }}>{q.l}</button>
+              ))}
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
+
+          {/* ── KPIs globales del período ── */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:16}}>
+            {[
+              {label:"Ingresos totales", val:kpiPeriodo.totalI, color:"#00C9A7", sub:"en el período"},
+              {label:"Seguimientos totales", val:kpiPeriodo.totalS, color:"#F7B731", sub:"en el período"},
+              {label:"Cumpl. promedio", val:avgPctGlobal+"%", color:"#4F8EF7", sub:"del período"},
+              {label:"Ingresos hoy", val:totalIHoy, color:"#26DE81", sub:`de ${totalMeta} meta`},
+              {label:"Auditoras", val:listaAuditoras.length, color:"#e8f0fe", sub:"activas"},
+            ].map(k=>(
+              <div key={k.label} style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:12,padding:"12px 14px"}}>
+                <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:5}}>{k.label}</div>
+                <div style={{fontSize:28,fontWeight:800,color:k.color,lineHeight:1}}>{k.val}</div>
+                <div style={{fontSize:10,color:"#4f7096",marginTop:3}}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Tarjetas por auditora (% = promedio del período) ── */}
+          <div style={{fontSize:11,color:"#4f7096",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.06em"}}>
+            Desempeño por auditora — {rangoDesde} → {rangoHasta}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:20}}>
             {listaAuditoras.map(([id,a],i)=>{
               const color=COLORS[i%COLORS.length];
               const diaHoy=(historial[hoy]&&historial[hoy][id])||{ingresos:0,seguimientos:0};
-              const ing=diaHoy.ingresos||0;
-              const seg=diaHoy.seguimientos||0;
+              const ingHoy=diaHoy.ingresos||0;
+              const segHoy=diaHoy.seguimientos||0;
               const meta=a.meta||30;
-              const pct=meta>0?Math.round((ing/meta)*100):0;
-              const {avgPct,avgIngresos,diasContados}=calcPromedio(historial,id,{[id]:a},diasPeriodo);
+              const pctHoy=meta>0?Math.round((ingHoy/meta)*100):0;
+              const {avgPct,avgIngresos,avgSeguimientos,diasContados,totalIngresos,totalSeguimientos}=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
+              const pctShow=diasContados>0?avgPct:pctHoy;
               return(
                 <div key={id} style={{background:"linear-gradient(145deg,#0f1f35,#0d1a2d)",border:"1px solid #1e2d45",borderRadius:16,padding:"16px 18px"}}>
+                  {/* Nombre + radial */}
                   <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:10}}>
                     <div>
                       <div style={{fontSize:10,color,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>{a.nombre}</div>
-                      <div style={{fontSize:42,fontWeight:800,lineHeight:1,letterSpacing:"-1px",color:pct>=100?"#26DE81":pct>=70?"#F7B731":"#e8f0fe"}}>{pct}%</div>
-                      <div style={{fontSize:10,color:"#4f7096",marginTop:2}}>cumplimiento · meta {meta}</div>
+                      <div style={{fontSize:42,fontWeight:800,lineHeight:1,letterSpacing:"-1px",color:pctShow>=100?"#26DE81":pctShow>=70?"#F7B731":"#e8f0fe"}}>{pctShow}%</div>
+                      <div style={{fontSize:10,color:"#4f7096",marginTop:2}}>
+                        {diasContados>0?"cumpl. prom. período":"cumpl. hoy"} · meta {meta}
+                      </div>
                     </div>
                     <div style={{position:"relative"}}>
-                      <RadialProgress pct={pct} color={pct>=100?"#26DE81":color} size={64}/>
-                      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:pct>=100?"#26DE81":color}}>{pct}%</div>
+                      <RadialProgress pct={pctShow} color={pctShow>=100?"#26DE81":color} size={64}/>
+                      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:pctShow>=100?"#26DE81":color}}>{pctShow}%</div>
                     </div>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
-                    <div style={{background:"#0b1523",borderRadius:9,padding:"8px 12px",border:"1px solid #1e2d45"}}>
+
+                  {/* Métricas del período */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+                    <div style={{background:"#0b1523",borderRadius:9,padding:"7px 10px",border:"1px solid #1e2d45"}}>
                       <div style={{fontSize:9,color:"#00C9A7",textTransform:"uppercase",fontWeight:700}}>Ingresos (I)</div>
-                      <div style={{fontSize:26,fontWeight:800,color:"#00C9A7",lineHeight:1,marginTop:2}}>{ing}</div>
-                      <div style={{fontSize:9,color:"#4f7096",marginTop:1}}>de {meta} hoy</div>
+                      <div style={{fontSize:22,fontWeight:800,color:"#00C9A7",lineHeight:1,marginTop:2}}>{diasContados>0?totalIngresos:ingHoy}</div>
+                      <div style={{fontSize:9,color:"#4f7096",marginTop:1}}>{diasContados>0?`prom. ${avgIngresos}/día`:`de ${meta} hoy`}</div>
                     </div>
-                    <div style={{background:"#0b1523",borderRadius:9,padding:"8px 12px",border:"1px solid #1e2d45"}}>
+                    <div style={{background:"#0b1523",borderRadius:9,padding:"7px 10px",border:"1px solid #1e2d45"}}>
                       <div style={{fontSize:9,color:"#F7B731",textTransform:"uppercase",fontWeight:700}}>Seguim. (S)</div>
-                      <div style={{fontSize:26,fontWeight:800,color:"#F7B731",lineHeight:1,marginTop:2}}>{seg}</div>
-                      <div style={{fontSize:9,color:"#4f7096",marginTop:1}}>hoy</div>
+                      <div style={{fontSize:22,fontWeight:800,color:"#F7B731",lineHeight:1,marginTop:2}}>{diasContados>0?totalSeguimientos:segHoy}</div>
+                      <div style={{fontSize:9,color:"#4f7096",marginTop:1}}>{diasContados>0?`prom. ${avgSeguimientos}/día`:"hoy"}</div>
                     </div>
                   </div>
-                  <div style={{height:5,background:"#1e2d45",borderRadius:99,overflow:"hidden",marginBottom:10}}>
-                    <div style={{height:"100%",borderRadius:99,background:pct>=100?"#26DE81":color,width:`${Math.min(pct,100)}%`,transition:"width 0.5s ease"}}/>
+
+                  {/* Barra de progreso del período */}
+                  <div style={{height:5,background:"#1e2d45",borderRadius:99,overflow:"hidden",marginBottom:8}}>
+                    <div style={{height:"100%",borderRadius:99,background:pctShow>=100?"#26DE81":color,width:`${Math.min(pctShow,100)}%`,transition:"width 0.5s ease"}}/>
                   </div>
+
+                  {/* Promedios del período */}
                   {diasContados>0&&(
-                    <div style={{background:"#0b152388",border:"1px solid #1e2d4577",borderRadius:8,padding:"7px 10px",marginBottom:10}}>
-                      <div style={{fontSize:9,color:"#4f7096",textTransform:"uppercase",marginBottom:3}}>Prom. {PERIODOS.find(p=>p.id===periodo)?.label||"periodo"}</div>
-                      <div style={{display:"flex",gap:14}}>
-                        <div><div style={{fontSize:16,fontWeight:800,color:"#4F8EF7"}}>{avgPct}%</div><div style={{fontSize:9,color:"#4f7096"}}>% cumpl. prom.</div></div>
-                        <div><div style={{fontSize:16,fontWeight:800,color:"#4F8EF7"}}>{avgIngresos}</div><div style={{fontSize:9,color:"#4f7096"}}>ing. prom./dia</div></div>
-                        <div><div style={{fontSize:16,fontWeight:800,color:"#4f7096"}}>{diasContados}</div><div style={{fontSize:9,color:"#4f7096"}}>dias</div></div>
+                    <div style={{background:"#0b152366",border:"1px solid #1e2d4555",borderRadius:8,padding:"6px 10px",marginBottom:8}}>
+                      <div style={{fontSize:9,color:"#4f7096",textTransform:"uppercase",marginBottom:4}}>Promedios del período ({diasContados} días)</div>
+                      <div style={{display:"flex",gap:12}}>
+                        <div><div style={{fontSize:14,fontWeight:700,color:"#4F8EF7"}}>{avgPct}%</div><div style={{fontSize:9,color:"#4f7096"}}>% cumpl.</div></div>
+                        <div><div style={{fontSize:14,fontWeight:700,color:"#4F8EF7"}}>{avgIngresos}</div><div style={{fontSize:9,color:"#4f7096"}}>I/día</div></div>
+                        <div><div style={{fontSize:14,fontWeight:700,color:"#4f7096"}}>{avgSeguimientos}</div><div style={{fontSize:9,color:"#4f7096"}}>S/día</div></div>
                       </div>
                     </div>
                   )}
+
+                  {/* Ajuste manual */}
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:10,color:"#4f7096",flex:1}}>Ajuste manual:</span>
+                    <span style={{fontSize:10,color:"#4f7096",flex:1}}>Ajuste ingresos hoy:</span>
                     <button onClick={()=>ajustarConteo(id,-1)} style={{background:"#1e2d45",color:"#FC5C65",border:"none",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontSize:16,fontWeight:700}}>-</button>
                     <button onClick={()=>ajustarConteo(id,1)} style={{background:"#1e2d45",color:"#26DE81",border:"none",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontSize:16,fontWeight:700}}>+</button>
                   </div>
-                  {pct>=100&&<div style={{marginTop:8,textAlign:"center",fontSize:11,color:"#26DE81",fontWeight:700}}>Meta cumplida</div>}
+                  {pctHoy>=100&&<div style={{marginTop:7,textAlign:"center",fontSize:11,color:"#26DE81",fontWeight:700}}>Meta cumplida hoy</div>}
                 </div>
               );
             })}
           </div>
+
+          {/* ── Tabla resumen de revisiones ── */}
+          <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:14,padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#4F8EF7",marginBottom:12,textTransform:"uppercase",letterSpacing:"0.06em"}}>
+              Resumen de revisiones — {rangoDesde} → {rangoHasta}
+            </div>
+            {/* Filtros tabla */}
+            <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+              <select value={filtroAud} onChange={e=>setFiltroAud(e.target.value)} style={{...inp,width:"auto",fontSize:12}}>
+                <option value="todas">Todas las auditoras</option>
+                {listaAuditoras.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
+              </select>
+            </div>
+            {/* Tabla */}
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead>
+                  <tr style={{borderBottom:"1px solid #1e2d45"}}>
+                    {["Auditora","Ingresos (I)","Seguim. (S)","Total","% Cumpl. prom.","I prom./día","S prom./día","Días activos","Estado"].map(h=>(
+                      <th key={h} style={{padding:"6px 10px",textAlign:"left",fontSize:10,color:"#4f7096",textTransform:"uppercase",letterSpacing:"0.05em",fontWeight:600,whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(filtroAud==="todas"?listaAuditoras:listaAuditoras.filter(([id])=>id===filtroAud)).map(([id,a],i)=>{
+                    const {avgPct,avgIngresos,avgSeguimientos,diasContados,totalIngresos,totalSeguimientos}=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
+                    const estado=avgPct>=80?{label:"En meta",bg:"#0d2a1e",color:"#26DE81"}:avgPct>=50?{label:"Parcial",bg:"#2a1f0d",color:"#F7B731"}:{label:"Por debajo",bg:"#2a1010",color:"#FC5C65"};
+                    return(
+                      <tr key={id} style={{borderBottom:"1px solid #1e2d4555"}}>
+                        <td style={{padding:"10px",fontWeight:600,color:"#e8f0fe"}}>{a.nombre}</td>
+                        <td style={{padding:"10px",color:"#00C9A7",fontWeight:700}}>{totalIngresos}</td>
+                        <td style={{padding:"10px",color:"#F7B731",fontWeight:700}}>{totalSeguimientos}</td>
+                        <td style={{padding:"10px",color:"#e8f0fe",fontWeight:700}}>{totalIngresos+totalSeguimientos}</td>
+                        <td style={{padding:"10px"}}>
+                          <span style={{color:avgPct>=80?"#26DE81":avgPct>=50?"#F7B731":"#FC5C65",fontWeight:700}}>{avgPct}%</span>
+                        </td>
+                        <td style={{padding:"10px",color:"#4f7096"}}>{avgIngresos}</td>
+                        <td style={{padding:"10px",color:"#4f7096"}}>{avgSeguimientos}</td>
+                        <td style={{padding:"10px",color:"#4f7096"}}>{diasContados}</td>
+                        <td style={{padding:"10px"}}>
+                          <span style={{background:estado.bg,color:estado.color,borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700}}>{estado.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Fila de totales */}
+                  {filtroAud==="todas"&&(()=>{
+                    const tots=listaAuditoras.reduce((acc,[id,a])=>{
+                      const p=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
+                      acc.i+=p.totalIngresos; acc.s+=p.totalSeguimientos; acc.pct+=p.avgPct;
+                      return acc;
+                    },{i:0,s:0,pct:0});
+                    return(
+                      <tr style={{borderTop:"2px solid #1e2d45",background:"#0b1a2a"}}>
+                        <td style={{padding:"10px",fontWeight:700,color:"#4f7096",fontSize:10,textTransform:"uppercase"}}>Total general</td>
+                        <td style={{padding:"10px",color:"#00C9A7",fontWeight:800}}>{tots.i}</td>
+                        <td style={{padding:"10px",color:"#F7B731",fontWeight:800}}>{tots.s}</td>
+                        <td style={{padding:"10px",color:"#e8f0fe",fontWeight:800}}>{tots.i+tots.s}</td>
+                        <td style={{padding:"10px",color:"#4F8EF7",fontWeight:800}}>{listaAuditoras.length>0?Math.round(tots.pct/listaAuditoras.length):0}%</td>
+                        <td colSpan={4} style={{padding:"10px",color:"#4f7096",fontSize:10}}>promedio grupal del período</td>
+                      </tr>
+                    );
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </>)}
 
         {coordView==="log"&&(()=>{
@@ -751,7 +874,8 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               </select>
             </div>
             {filtroAud!=="todas"&&auditoras[filtroAud]&&(()=>{
-              const {avgPct,avgIngresos,diasContados}=calcPromedio(historial,filtroAud,{[filtroAud]:auditoras[filtroAud]},PERIODOS.find(p=>p.id===filtroRango)?.dias||7);
+              const histDesde=diasAtras(PERIODOS.find(p=>p.id===filtroRango)?.dias||7);
+              const {avgPct,avgIngresos,avgSeguimientos,diasContados}=calcPromedio(historial,filtroAud,{[filtroAud]:auditoras[filtroAud]},histDesde,hoy);
               return(
                 <div style={{background:"#0f1f35",border:"1px solid #4F8EF733",borderRadius:12,padding:"12px 16px",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap"}}>
                   <div><div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase"}}>Prom. % cumplimiento</div><div style={{fontSize:22,fontWeight:800,color:"#4F8EF7"}}>{avgPct}%</div></div>

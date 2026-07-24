@@ -180,10 +180,10 @@ function Portada({config,onSelectRol}){
       </div>
       <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
         <button onClick={()=>onSelectRol("auditora")} style={{background:"linear-gradient(135deg,#00C9A7,#26DE81)",color:"#0b1523",border:"none",borderRadius:16,padding:"24px 40px",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",flexDirection:"column",alignItems:"center",gap:10,minWidth:160,boxShadow:"0 4px 20px #00C9A733"}}>
-          <span style={{fontSize:34}}>👩‍⚕️</span>Soy auditora
+          <span style={{fontSize:34}}>👩‍⚕️</span>Soy Auditor
         </button>
         <button onClick={()=>onSelectRol("coord")} style={{background:"linear-gradient(135deg,#4F8EF7,#A55EEA)",color:"#fff",border:"none",borderRadius:16,padding:"24px 40px",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",flexDirection:"column",alignItems:"center",gap:10,minWidth:160,boxShadow:"0 4px 20px #4F8EF733"}}>
-          <span style={{fontSize:34}}>🔐</span>Soy coordinadora
+          <span style={{fontSize:34}}>🔐</span>Soy Coordinador
         </button>
       </div>
     </div>

@@ -29,14 +29,14 @@ const diasAtras  = (n) => { const d=new Date(new Date().getTime()-5*60*60*1000);
 const inp = { background:"#0b1523",border:"1px solid #1e2d45",borderRadius:8,padding:"8px 11px",color:"#e8f0fe",fontSize:13,outline:"none",width:"100%",boxSizing:"border-box" };
 const mkBtn = (bg,fg="#0b1523",extra={}) => ({ background:bg,color:fg,border:"none",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:12,fontWeight:700,...extra });
 
-function calcPromedio(historial, auditoraId, auditoras, desde, hasta) {
+function calcPromedio(historial, Auditor(a)Id, Auditores, desde, hasta) {
   const diasArr = Object.entries(historial)
     .filter(([d]) => d >= desde && d <= hasta)
     .map(([, dData]) => {
-      const data = dData[auditoraId]; if(!data) return null;
+      const data = dData[Auditor(a)Id]; if(!data) return null;
       const ingresos = data.ingresos || 0;
       const seguimientos = data.seguimientos || 0;
-      const meta = auditoras[auditoraId]?.meta || 30;
+      const meta = Auditores[Auditor(a)Id]?.meta || 30;
       return { ingresos, seguimientos, pct: meta > 0 ? Math.round((ingresos/meta)*100) : 0 };
     }).filter(Boolean);
   if(diasArr.length === 0) return { avgPct:0, avgIngresos:0, avgSeguimientos:0, diasContados:0, totalIngresos:0, totalSeguimientos:0 };
@@ -87,7 +87,7 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:11}}>
-      <div style={{fontSize:12,color:"#4f7096"}}>Auditora: <strong style={{color:"#e8f0fe"}}>{entry.nombre}</strong></div>
+      <div style={{fontSize:12,color:"#4f7096"}}>Auditor(a): <strong style={{color:"#e8f0fe"}}>{entry.nombre}</strong></div>
 
       {/* Tipo editable */}
       <div>
@@ -112,7 +112,7 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
         </div>
         {tipoReg !== entry.tipoReg && (
           <div style={{fontSize:10,color:"#FC5C65",marginTop:5,padding:"4px 8px",background:"#FC5C6522",borderRadius:6}}>
-            ⚠ Cambiar de {entry.tipoReg==="I"?"Ingreso a Seguimiento":"Seguimiento a Ingreso"} ajustara el conteo de la auditora en ese dia
+            ⚠ Cambiar de {entry.tipoReg==="I"?"Ingreso a Seguimiento":"Seguimiento a Ingreso"} ajustara el conteo de la Auditor(a) en ese dia
           </div>
         )}
       </div>
@@ -134,7 +134,7 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
       </select>
       <input type="text" placeholder="ID / N (ej. 12A, UCI-3)" value={numero} onChange={e=>setNumero(e.target.value)} maxLength={20} style={inp}/>
       <div style={{display:"flex",gap:8,marginTop:4}}>
-        <button onClick={()=>onSave({servicio,unidad,numero,fecha,tipoReg,auditoraId:entry.auditoraId})}
+        <button onClick={()=>onSave({servicio,unidad,numero,fecha,tipoReg,Auditor(a)Id:entry.Auditor(a)Id})}
           style={{...mkBtn("linear-gradient(135deg,#00C9A7,#4F8EF7)","#fff"),flex:2,padding:"10px 0",fontSize:13,borderRadius:10}}>Guardar</button>
         <button onClick={onCancel} style={{...mkBtn("#1e2d45","#4f7096"),flex:1,padding:"10px 0",fontSize:13,borderRadius:10}}>Cancelar</button>
       </div>
@@ -142,7 +142,7 @@ function EditLogForm({entry,listaServicios,onSave,onCancel}){
   );
 }
 
-function LoginCoordinadora({onLogin,onBack}){
+function LoginCoordinador({onLogin,onBack}){
   const [pin,setPin]=useState(""), [err,setErr]=useState(false);
   const handleLogin=async()=>{
     const snap=await get(ref(db,"config/pin"));
@@ -179,7 +179,7 @@ function Portada({config,onSelectRol}){
         {config.area&&<div style={{fontSize:12,color:"#4f7096"}}>{config.area}</div>}
       </div>
       <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
-        <button onClick={()=>onSelectRol("auditora")} style={{background:"linear-gradient(135deg,#00C9A7,#26DE81)",color:"#0b1523",border:"none",borderRadius:16,padding:"24px 40px",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",flexDirection:"column",alignItems:"center",gap:10,minWidth:160,boxShadow:"0 4px 20px #00C9A733"}}>
+        <button onClick={()=>onSelectRol("Auditor(a)")} style={{background:"linear-gradient(135deg,#00C9A7,#26DE81)",color:"#0b1523",border:"none",borderRadius:16,padding:"24px 40px",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",flexDirection:"column",alignItems:"center",gap:10,minWidth:160,boxShadow:"0 4px 20px #00C9A733"}}>
           <span style={{fontSize:34}}>👩‍⚕️</span>Soy Auditor
         </button>
         <button onClick={()=>onSelectRol("coord")} style={{background:"linear-gradient(135deg,#4F8EF7,#A55EEA)",color:"#fff",border:"none",borderRadius:16,padding:"24px 40px",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",flexDirection:"column",alignItems:"center",gap:10,minWidth:160,boxShadow:"0 4px 20px #4F8EF733"}}>
@@ -212,7 +212,7 @@ function Header({config,esCoord,connected,onBack,extraButtons}){
   );
 }
 
-function TarjetaAuditora({id,a,color,historial,desde,hasta,registro,setReg,onRegistrar,listaServicios,esCoord,onAjustar,isPulsing}){
+function TarjetaAuditor(a)({id,a,color,historial,desde,hasta,registro,setReg,onRegistrar,listaServicios,esCoord,onAjustar,isPulsing}){
   const hoy       = hoyISO();
   const diaHoy    = (historial[hoy]&&historial[hoy][id])||{ingresos:0,seguimientos:0};
   const ingresos  = diaHoy.ingresos   ||0;
@@ -289,44 +289,44 @@ function TarjetaAuditora({id,a,color,historial,desde,hasta,registro,setReg,onReg
   );
 }
 
-function useRegistro(auditoras,historial){
+function useRegistro(Auditores,historial){
   const [registro,setRegistroState]=useState({});
   const [pulse,setPulse]=useState(null);
   const setReg=(id,campo,val)=>setRegistroState(r=>({...r,[id]:{...(r[id]||{}),[campo]:val}}));
-  const registrar=useCallback(async(auditoraId,tipoReg)=>{
-    const a=auditoras[auditoraId]; if(!a) return;
-    const reg=registro[auditoraId]||{};
+  const registrar=useCallback(async(Auditor(a)Id,tipoReg)=>{
+    const a=Auditores[Auditor(a)Id]; if(!a) return;
+    const reg=registro[Auditor(a)Id]||{};
     const servicio=reg.servicio||"", unidad=reg.unidad||"Cama", numero=reg.numero||"";
     if(!servicio){ alert("Selecciona un servicio antes de registrar."); return; }
     const hoy=hoyISO();
-    const diaActual=(historial[hoy]&&historial[hoy][auditoraId])||{ingresos:0,seguimientos:0,tipos:{}};
+    const diaActual=(historial[hoy]&&historial[hoy][Auditor(a)Id])||{ingresos:0,seguimientos:0,tipos:{}};
     const updates={};
     if(tipoReg==="I"){
       const nuevosI=(diaActual.ingresos||0)+1;
-      updates[`historial/${hoy}/${auditoraId}/ingresos`]=nuevosI;
-      updates[`auditoras/${auditoraId}/historias`]=nuevosI;
+      updates[`historial/${hoy}/${Auditor(a)Id}/ingresos`]=nuevosI;
+      updates[`Auditores/${Auditor(a)Id}/historias`]=nuevosI;
     } else {
-      updates[`historial/${hoy}/${auditoraId}/seguimientos`]=(diaActual.seguimientos||0)+1;
+      updates[`historial/${hoy}/${Auditor(a)Id}/seguimientos`]=(diaActual.seguimientos||0)+1;
     }
     const key=`${servicio}__${unidad}`;
-    updates[`historial/${hoy}/${auditoraId}/tipos/${key}`]=((diaActual.tipos||{})[key]||0)+1;
+    updates[`historial/${hoy}/${Auditor(a)Id}/tipos/${key}`]=((diaActual.tipos||{})[key]||0)+1;
     await update(ref(db),updates);
-    await push(ref(db,"log"),{ts:tsNow(),ts_ms:Date.now(),fecha:hoy,nombre:a.nombre,auditoraId,tipoReg,delta:tipoReg==="I"?1:0,servicio,unidad,numero});
-    setPulse(auditoraId);
+    await push(ref(db,"log"),{ts:tsNow(),ts_ms:Date.now(),fecha:hoy,nombre:a.nombre,Auditor(a)Id,tipoReg,delta:tipoReg==="I"?1:0,servicio,unidad,numero});
+    setPulse(Auditor(a)Id);
     setTimeout(()=>setPulse(null),600);
-  },[auditoras,historial,registro]);
+  },[Auditores,historial,registro]);
   return {registro,setReg,registrar,pulse};
 }
 
-function VistaAuditora({config,auditoras,servicios,historial,connected,onBack}){
-  const {registro,setReg,registrar,pulse}=useRegistro(auditoras,historial);
+function VistaAuditor(a)({config,Auditores,servicios,historial,connected,onBack}){
+  const {registro,setReg,registrar,pulse}=useRegistro(Auditores,historial);
   const [periodo,setPeriodo]=useState("semana");
-  const listaAuditoras=Object.entries(auditoras);
+  const listaAuditores=Object.entries(Auditores);
   const listaServicios=Object.entries(servicios);
   const hoy=hoyISO();
-  const totalI=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.ingresos)||0),0);
-  const totalS=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.seguimientos)||0),0);
-  const totalMeta=listaAuditoras.reduce((s,[,a])=>s+(a.meta||30),0);
+  const totalI=listaAuditores.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.ingresos)||0),0);
+  const totalS=listaAuditores.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.seguimientos)||0),0);
+  const totalMeta=listaAuditores.reduce((s,[,a])=>s+(a.meta||30),0);
   const pctGlobal=totalMeta>0?Math.round((totalI/totalMeta)*100):0;
 
   return(
@@ -355,8 +355,8 @@ function VistaAuditora({config,auditoras,servicios,historial,connected,onBack}){
       </div>
       <div style={{padding:"12px 18px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:12}}>
-          {listaAuditoras.map(([id,a],i)=>(
-            <TarjetaAuditora key={id} id={id} a={a} color={COLORS[i%COLORS.length]}
+          {listaAuditores.map(([id,a],i)=>(
+            <TarjetaAuditor(a) key={id} id={id} a={a} color={COLORS[i%COLORS.length]}
               historial={historial} periodo={periodo} registro={registro}
               setReg={setReg} onRegistrar={registrar}
               listaServicios={listaServicios} esCoord={false} onAjustar={()=>{}}
@@ -368,8 +368,8 @@ function VistaAuditora({config,auditoras,servicios,historial,connected,onBack}){
   );
 }
 
-function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,onBack}){
-  const {registro,setReg,registrar,pulse}=useRegistro(auditoras,historial);
+function VistaCoordinador({config,Auditores,servicios,historial,log,connected,onBack}){
+  const {registro,setReg,registrar,pulse}=useRegistro(Auditores,historial);
   const [coordView,setCoordView]=useState("dashboard");
   const [modalAud,setModalAud]=useState(null);
   const [modalEditLog,setModalEditLog]=useState(null);
@@ -389,22 +389,22 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
   const [rangoDesde,setRangoDesde]=useState(diasAtras(6));
   const [rangoHasta,setRangoHasta]=useState(hoy);
 
-  const listaAuditoras=Object.entries(auditoras);
+  const listaAuditores=Object.entries(Auditores);
   const listaServicios=Object.entries(servicios);
-  const totalMeta=listaAuditoras.reduce((s,[,a])=>s+(a.meta||30),0);
+  const totalMeta=listaAuditores.reduce((s,[,a])=>s+(a.meta||30),0);
 
   // KPIs globales del período
-  const kpiPeriodo = listaAuditoras.reduce((acc,[id,a])=>{
+  const kpiPeriodo = listaAuditores.reduce((acc,[id,a])=>{
     const p=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
     acc.totalI+=p.totalIngresos; acc.totalS+=p.totalSeguimientos;
     acc.sumPct+=p.avgPct; acc.diasMax=Math.max(acc.diasMax,p.diasContados);
     return acc;
   },{totalI:0,totalS:0,sumPct:0,diasMax:0});
-  const avgPctGlobal=listaAuditoras.length>0?Math.round(kpiPeriodo.sumPct/listaAuditoras.length):0;
+  const avgPctGlobal=listaAuditores.length>0?Math.round(kpiPeriodo.sumPct/listaAuditores.length):0;
 
   // Para el día de hoy (contador actual)
-  const totalIHoy=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.ingresos)||0),0);
-  const totalSHoy=listaAuditoras.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.seguimientos)||0),0);
+  const totalIHoy=listaAuditores.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.ingresos)||0),0);
+  const totalSHoy=listaAuditores.reduce((s,[id])=>s+((historial[hoy]&&historial[hoy][id]?.seguimientos)||0),0);
   const pctGlobalHoy=totalMeta>0?Math.round((totalIHoy/totalMeta)*100):0;
 
   const setQuickRange=(dias)=>{
@@ -417,46 +417,46 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
   const resetDia=async()=>{
     if(!window.confirm("Reiniciar todos los conteos del dia? El historial se conserva.")) return;
     const updates={};
-    Object.keys(auditoras).forEach(id=>{
+    Object.keys(Auditores).forEach(id=>{
       updates[`historial/${hoy}/${id}/ingresos`]=0;
       updates[`historial/${hoy}/${id}/seguimientos`]=0;
       updates[`historial/${hoy}/${id}/tipos`]={};
-      updates[`auditoras/${id}/historias`]=0;
+      updates[`Auditores/${id}/historias`]=0;
     });
     await update(ref(db),updates);
     await push(ref(db,"log"),{ts:tsNow(),ts_ms:Date.now(),fecha:hoy,nombre:"Sistema",tipo:"reset",tipoReg:"reset"});
   };
 
   const ajustarConteo=async(audId,delta)=>{
-    const a=auditoras[audId]; if(!a) return;
+    const a=Auditores[audId]; if(!a) return;
     const diaActual=(historial[hoy]&&historial[hoy][audId])||{ingresos:0};
     const nuevos=Math.max(0,(diaActual.ingresos||0)+delta);
-    await update(ref(db),{[`historial/${hoy}/${audId}/ingresos`]:nuevos,[`auditoras/${audId}/historias`]:nuevos});
-    await push(ref(db,"log"),{ts:tsNow(),ts_ms:Date.now(),fecha:hoy,nombre:a.nombre,auditoraId:audId,delta,tipoReg:"I",servicio:"Ajuste manual",unidad:"—",numero:"",esAjuste:true});
+    await update(ref(db),{[`historial/${hoy}/${audId}/ingresos`]:nuevos,[`Auditores/${audId}/historias`]:nuevos});
+    await push(ref(db,"log"),{ts:tsNow(),ts_ms:Date.now(),fecha:hoy,nombre:a.nombre,Auditor(a)Id:audId,delta,tipoReg:"I",servicio:"Ajuste manual",unidad:"—",numero:"",esAjuste:true});
   };
 
   const agregarSvc=async()=>{if(!nuevoSvc.trim())return;await push(ref(db,"servicios"),{nombre:nuevoSvc.trim()});setNuevoSvc("");};
   const eliminarSvc=async(id)=>{if(!window.confirm("Eliminar?"))return;await remove(ref(db,`servicios/${id}`));};
   const abrirNueva=()=>{setFormAud({nombre:"",meta:30,servicios:[]});setModalAud("new");};
-  const abrirEditar=(id)=>{const a=auditoras[id];setFormAud({nombre:a.nombre,meta:a.meta||30,servicios:a.servicios||[]});setModalAud(id);};
+  const abrirEditar=(id)=>{const a=Auditores[id];setFormAud({nombre:a.nombre,meta:a.meta||30,servicios:a.servicios||[]});setModalAud(id);};
   const guardarAud=async()=>{
     if(!formAud.nombre.trim())return;
     const data={nombre:formAud.nombre.trim(),meta:parseInt(formAud.meta)||30,servicios:formAud.servicios};
-    if(modalAud==="new") await push(ref(db,"auditoras"),{...data,historias:0,tipos:{}});
-    else await update(ref(db,`auditoras/${modalAud}`),data);
+    if(modalAud==="new") await push(ref(db,"Auditores"),{...data,historias:0,tipos:{}});
+    else await update(ref(db,`Auditores/${modalAud}`),data);
     setModalAud(null);
   };
-  const eliminarAud=async(id)=>{if(!window.confirm("Eliminar?"))return;await remove(ref(db,`auditoras/${id}`));};
+  const eliminarAud=async(id)=>{if(!window.confirm("Eliminar?"))return;await remove(ref(db,`Auditores/${id}`));};
   const toggleSvc=(sid)=>{const cur=formAud.servicios||[];setFormAud(f=>({...f,servicios:cur.includes(sid)?cur.filter(x=>x!==sid):[...cur,sid]}));};
 
   const eliminarLogEntry=async(entry)=>{
     if(!window.confirm("Eliminar este registro?")) return;
     await remove(ref(db,`log/${entry._id}`));
-    if(entry.auditoraId&&entry.tipoReg==="I"){
+    if(entry.Auditor(a)Id&&entry.tipoReg==="I"){
       const dia=entry.fecha||hoy;
-      const diaData=(historial[dia]&&historial[dia][entry.auditoraId])||{ingresos:0};
+      const diaData=(historial[dia]&&historial[dia][entry.Auditor(a)Id])||{ingresos:0};
       const nuevos=Math.max(0,(diaData.ingresos||0)-1);
-      await update(ref(db),{[`historial/${dia}/${entry.auditoraId}/ingresos`]:nuevos,[`auditoras/${entry.auditoraId}/historias`]:nuevos});
+      await update(ref(db),{[`historial/${dia}/${entry.Auditor(a)Id}/ingresos`]:nuevos,[`Auditores/${entry.Auditor(a)Id}/historias`]:nuevos});
     }
   };
   const guardarEdicionLog=async(logId,cambios)=>{
@@ -465,7 +465,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     const fechaNueva    = cambios.fecha || fechaAnterior;
     const tipoAnterior  = entry.tipoReg || "I";
     const tipoNuevo     = cambios.tipoReg || tipoAnterior;
-    const audId         = cambios.auditoraId || entry.auditoraId;
+    const audId         = cambios.Auditor(a)Id || entry.Auditor(a)Id;
     const hoy           = hoyISO();
 
     // Guardar cambios en el log (incluye tipoReg y fecha nuevos)
@@ -502,7 +502,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
         let ingHoy = dHoy.ingresos||0;
         if(eraIngreso && fechaAnterior===hoy) ingHoy = Math.max(0, ingHoy-1);
         if(esIngreso  && fechaNueva===hoy)    ingHoy = ingHoy+1;
-        await update(ref(db,`auditoras/${audId}`),{historias: ingHoy});
+        await update(ref(db,`Auditores/${audId}`),{historias: ingHoy});
       }
     }
     setModalEditLog(null);
@@ -522,8 +522,8 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     const hoy2=fechaCorta(),ahora=tsNow();
     const diasOrdenados=Object.keys(historial).sort().reverse();
     const rows1=[[config.institucion||"Institucion"],[`${config.area||"Auditoria"} — ${hoy2} ${ahora}`],[],
-      ["Fecha","Auditora","Ingresos","Seguimientos","Meta","% Cumplimiento","Prom Ing/dia","Prom % cumpl."]];
-    listaAuditoras.forEach(([id,a])=>{
+      ["Fecha","Auditor(a)","Ingresos","Seguimientos","Meta","% Cumplimiento","Prom Ing/dia","Prom % cumpl."]];
+    listaAuditores.forEach(([id,a])=>{
       diasOrdenados.forEach(dia=>{
         const d=historial[dia]&&historial[dia][id]; if(!d) return;
         const ing=d.ingresos||0,seg=d.seguimientos||0,meta=a.meta||30;
@@ -537,20 +537,20 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
     XLSX.utils.book_append_sheet(wb,ws1,"Historial completo");
 
     const rows2=[[config.institucion||"Institucion"],[`Resumen del dia — ${hoy2}`],[],
-      ["Auditora","Ingresos hoy","Seguimientos hoy","Meta","% Cumplimiento","Estado"],
-      ...listaAuditoras.map(([id,a])=>{
+      ["Auditor(a)","Ingresos hoy","Seguimientos hoy","Meta","% Cumplimiento","Estado"],
+      ...listaAuditores.map(([id,a])=>{
         const d=(historial[hoy]&&historial[hoy][id])||{ingresos:0,seguimientos:0};
         const ing=d.ingresos||0,meta=a.meta||30,pct=meta>0?ing/meta:0;
         return[a.nombre,ing,d.seguimientos||0,meta,pct,pct>=1?"Cumplida":pct>=0.7?"En progreso":"Por debajo"];
       })];
     const ws2=XLSX.utils.aoa_to_sheet(rows2);
     ws2["!cols"]=[{wch:26},{wch:14},{wch:16},{wch:8},{wch:16},{wch:16}];
-    listaAuditoras.forEach((_,i)=>{const c=`E${5+i}`;if(ws2[c])ws2[c].z="0.0%";});
+    listaAuditores.forEach((_,i)=>{const c=`E${5+i}`;if(ws2[c])ws2[c].z="0.0%";});
     XLSX.utils.book_append_sheet(wb,ws2,"Resumen del dia");
 
     const logF=log.filter(e=>e.tipoReg!=="reset");
     if(logF.length>0){
-      const rows3=[["Registro"],[],["Fecha","Hora","Auditora","Tipo","Servicio","Unidad","Identificador"],
+      const rows3=[["Registro"],[],["Fecha","Hora","Auditor(a)","Tipo","Servicio","Unidad","Identificador"],
         ...logF.map(e=>[fechaHumana(e.fecha||hoy),e.ts,e.nombre,e.tipoReg==="I"?"Ingreso":e.tipoReg==="S"?"Seguimiento":"Ajuste",e.servicio||"—",e.unidad||"—",e.numero||"—"])];
       const ws3=XLSX.utils.aoa_to_sheet(rows3);
       ws3["!cols"]=[{wch:12},{wch:12},{wch:26},{wch:12},{wch:18},{wch:12},{wch:14}];
@@ -617,7 +617,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               {label:"Seguimientos totales", val:kpiPeriodo.totalS, color:"#F7B731", sub:"en el período"},
               {label:"Cumpl. promedio", val:avgPctGlobal+"%", color:"#4F8EF7", sub:"del período"},
               {label:"Ingresos hoy", val:totalIHoy, color:"#26DE81", sub:`de ${totalMeta} meta`},
-              {label:"Auditoras", val:listaAuditoras.length, color:"#e8f0fe", sub:"activas"},
+              {label:"Auditores", val:listaAuditores.length, color:"#e8f0fe", sub:"activas"},
             ].map(k=>(
               <div key={k.label} style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:12,padding:"12px 14px"}}>
                 <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:5}}>{k.label}</div>
@@ -627,12 +627,12 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
             ))}
           </div>
 
-          {/* ── Tarjetas por auditora (% = promedio del período) ── */}
+          {/* ── Tarjetas por Auditor(a) (% = promedio del período) ── */}
           <div style={{fontSize:11,color:"#4f7096",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.06em"}}>
-            Desempeño por auditora — {rangoDesde} → {rangoHasta}
+            Desempeño por auditor(a) — {rangoDesde} → {rangoHasta}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:20}}>
-            {listaAuditoras.map(([id,a],i)=>{
+            {listaAuditores.map(([id,a],i)=>{
               const color=COLORS[i%COLORS.length];
               const diaHoy=(historial[hoy]&&historial[hoy][id])||{ingresos:0,seguimientos:0};
               const ingHoy=diaHoy.ingresos||0;
@@ -709,8 +709,8 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
             {/* Filtros tabla */}
             <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
               <select value={filtroAud} onChange={e=>setFiltroAud(e.target.value)} style={{...inp,width:"auto",fontSize:12}}>
-                <option value="todas">Todas las auditoras</option>
-                {listaAuditoras.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
+                <option value="todas">Todas las Auditores</option>
+                {listaAuditores.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
               </select>
             </div>
             {/* Tabla */}
@@ -718,13 +718,13 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead>
                   <tr style={{borderBottom:"1px solid #1e2d45"}}>
-                    {["Auditora","Ingresos (I)","Seguim. (S)","Total","% Cumpl. prom.","I prom./día","S prom./día","Días activos","Estado"].map(h=>(
+                    {["Auditor(a)","Ingresos (I)","Seguim. (S)","Total","% Cumpl. prom.","I prom./día","S prom./día","Días activos","Estado"].map(h=>(
                       <th key={h} style={{padding:"6px 10px",textAlign:"left",fontSize:10,color:"#4f7096",textTransform:"uppercase",letterSpacing:"0.05em",fontWeight:600,whiteSpace:"nowrap"}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {(filtroAud==="todas"?listaAuditoras:listaAuditoras.filter(([id])=>id===filtroAud)).map(([id,a],i)=>{
+                  {(filtroAud==="todas"?listaAuditores:listaAuditores.filter(([id])=>id===filtroAud)).map(([id,a],i)=>{
                     const {avgPct,avgIngresos,avgSeguimientos,diasContados,totalIngresos,totalSeguimientos}=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
                     const estado=avgPct>=80?{label:"En meta",bg:"#0d2a1e",color:"#26DE81"}:avgPct>=50?{label:"Parcial",bg:"#2a1f0d",color:"#F7B731"}:{label:"Por debajo",bg:"#2a1010",color:"#FC5C65"};
                     return(
@@ -747,7 +747,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
                   })}
                   {/* Fila de totales */}
                   {filtroAud==="todas"&&(()=>{
-                    const tots=listaAuditoras.reduce((acc,[id,a])=>{
+                    const tots=listaAuditores.reduce((acc,[id,a])=>{
                       const p=calcPromedio(historial,id,{[id]:a},rangoDesde,rangoHasta);
                       acc.i+=p.totalIngresos; acc.s+=p.totalSeguimientos; acc.pct+=p.avgPct;
                       return acc;
@@ -758,7 +758,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
                         <td style={{padding:"10px",color:"#00C9A7",fontWeight:800}}>{tots.i}</td>
                         <td style={{padding:"10px",color:"#F7B731",fontWeight:800}}>{tots.s}</td>
                         <td style={{padding:"10px",color:"#e8f0fe",fontWeight:800}}>{tots.i+tots.s}</td>
-                        <td style={{padding:"10px",color:"#4F8EF7",fontWeight:800}}>{listaAuditoras.length>0?Math.round(tots.pct/listaAuditoras.length):0}%</td>
+                        <td style={{padding:"10px",color:"#4F8EF7",fontWeight:800}}>{listaAuditores.length>0?Math.round(tots.pct/listaAuditores.length):0}%</td>
                         <td colSpan={4} style={{padding:"10px",color:"#4f7096",fontSize:10}}>promedio grupal del período</td>
                       </tr>
                     );
@@ -773,7 +773,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
         {coordView==="log"&&(()=>{
           const logFiltrado = log.filter(e=>{
             if(e.tipoReg==="reset") return false;
-            if(filtroLogAud!=="todas" && e.auditoraId!==filtroLogAud) return false;
+            if(filtroLogAud!=="todas" && e.Auditor(a)Id!==filtroLogAud) return false;
             if(filtroLogTipo!=="todos" && e.tipoReg!==filtroLogTipo) return false;
             if(filtroLogFecha && (e.fecha||"")!==filtroLogFecha) return false;
             return true;
@@ -791,10 +791,10 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
             {/* Filtros */}
             <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:12,padding:"12px 14px"}}>
               <div style={{display:"flex",flexDirection:"column",gap:4,flex:1,minWidth:140}}>
-                <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase"}}>Auditora</div>
+                <div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase"}}>Auditor(a)</div>
                 <select value={filtroLogAud} onChange={e=>setFiltroLogAud(e.target.value)} style={{...inp,fontSize:12}}>
                   <option value="todas">Todas</option>
-                  {listaAuditoras.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
+                  {listaAuditores.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
                 </select>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:4,minWidth:120}}>
@@ -827,7 +827,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
             {/* Lista */}
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {logFiltrado.map((entry,i)=>{
-                const idx=listaAuditoras.findIndex(([id])=>id===entry.auditoraId);
+                const idx=listaAuditores.findIndex(([id])=>id===entry.Auditor(a)Id);
                 const color=COLORS[idx>=0?idx%COLORS.length:0];
                 const esI=entry.tipoReg==="I";
                 return(
@@ -866,16 +866,16 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
             <div style={{fontSize:14,fontWeight:700,marginBottom:12,color:"#4F8EF7"}}>📅 Historial y promedios</div>
             <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
               <select value={filtroAud} onChange={e=>setFiltroAud(e.target.value)} style={{...inp,flex:1,maxWidth:260}}>
-                <option value="todas">Todas las auditoras</option>
-                {listaAuditoras.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
+                <option value="todas">Todos los auditor(es)</option>
+                {listaAuditores.map(([id,a])=><option key={id} value={id}>{a.nombre}</option>)}
               </select>
               <select value={filtroRango} onChange={e=>setFiltroRango(e.target.value)} style={{...inp,width:160}}>
                 {PERIODOS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
             </div>
-            {filtroAud!=="todas"&&auditoras[filtroAud]&&(()=>{
+            {filtroAud!=="todas"&&Auditores[filtroAud]&&(()=>{
               const histDesde=diasAtras(PERIODOS.find(p=>p.id===filtroRango)?.dias||7);
-              const {avgPct,avgIngresos,avgSeguimientos,diasContados}=calcPromedio(historial,filtroAud,{[filtroAud]:auditoras[filtroAud]},histDesde,hoy);
+              const {avgPct,avgIngresos,avgSeguimientos,diasContados}=calcPromedio(historial,filtroAud,{[filtroAud]:Auditores[filtroAud]},histDesde,hoy);
               return(
                 <div style={{background:"#0f1f35",border:"1px solid #4F8EF733",borderRadius:12,padding:"12px 16px",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap"}}>
                   <div><div style={{fontSize:10,color:"#4f7096",textTransform:"uppercase"}}>Prom. % cumplimiento</div><div style={{fontSize:22,fontWeight:800,color:"#4F8EF7"}}>{avgPct}%</div></div>
@@ -900,14 +900,14 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
                       </div>
                     </div>
                     {entradas.map(([audId,datos])=>{
-                      const idx=listaAuditoras.findIndex(([id])=>id===audId);
+                      const idx=listaAuditores.findIndex(([id])=>id===audId);
                       const color=COLORS[idx>=0?idx%COLORS.length:0];
-                      const meta=auditoras[audId]?.meta||30, ing=datos.ingresos||0;
+                      const meta=Auditores[audId]?.meta||30, ing=datos.ingresos||0;
                       const pct=meta>0?Math.round((ing/meta)*100):0;
                       return(
                         <div key={audId} style={{marginBottom:7,paddingLeft:8,borderLeft:`3px solid ${color}`}}>
                           <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
-                            <span style={{fontSize:12,color:"#e8f0fe",fontWeight:600}}>{auditoras[audId]?.nombre||audId}</span>
+                            <span style={{fontSize:12,color:"#e8f0fe",fontWeight:600}}>{Auditores[audId]?.nombre||audId}</span>
                             <div style={{display:"flex",gap:8}}>
                               <span style={{fontSize:11,color:"#00C9A7"}}>I: <strong>{ing}</strong> ({pct}%)</span>
                               <span style={{fontSize:11,color:"#F7B731"}}>S: <strong>{datos.seguimientos||0}</strong></span>
@@ -960,10 +960,10 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
             </div>
             <div style={{background:"#0f1f35",border:"1px solid #1e2d45",borderRadius:13,padding:"15px 17px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
-                <div style={{fontSize:11,color:"#4f7096",textTransform:"uppercase"}}>👩‍⚕️ Auditoras</div>
+                <div style={{fontSize:11,color:"#4f7096",textTransform:"uppercase"}}>👩‍⚕️ Auditores</div>
                 <button onClick={abrirNueva} style={mkBtn("#00C9A7")}>+ Nueva</button>
               </div>
-              {listaAuditoras.map(([id,a],i)=>{
+              {listaAuditores.map(([id,a],i)=>{
                 const color=COLORS[i%COLORS.length];
                 return(<div key={id} style={{borderLeft:`4px solid ${color}`,background:"#0b1523",border:"1px solid #1e2d45",borderRadius:9,padding:"10px 13px",marginBottom:7}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -981,7 +981,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
                   </div>
                 </div>);
               })}
-              {listaAuditoras.length===0&&<div style={{fontSize:12,color:"#4f7096"}}>Agrega la primera auditora.</div>}
+              {listaAuditores.length===0&&<div style={{fontSize:12,color:"#4f7096"}}>Agrega la primera Auditor(a).</div>}
             </div>
           </div>
         )}
@@ -991,7 +991,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
         <EditLogForm entry={modalEditLog} listaServicios={listaServicios} onSave={c=>guardarEdicionLog(modalEditLog._id,c)} onCancel={()=>setModalEditLog(null)}/>
       </Modal>)}
 
-      {modalAud!==null&&(<Modal title={modalAud==="new"?"Nueva auditora":"Editar auditora"} onClose={()=>setModalAud(null)}>
+      {modalAud!==null&&(<Modal title={modalAud==="new"?"Nueva Auditor(a)":"Editar Auditor(a)"} onClose={()=>setModalAud(null)}>
         <div style={{display:"flex",flexDirection:"column",gap:11}}>
           <input value={formAud.nombre} onChange={e=>setFormAud(f=>({...f,nombre:e.target.value}))} placeholder="Nombre completo" style={inp}/>
           <div style={{display:"flex",alignItems:"center",gap:9}}><span style={{fontSize:12,color:"#4f7096",whiteSpace:"nowrap"}}>Meta diaria Ingresos:</span><input type="number" value={formAud.meta} onChange={e=>setFormAud(f=>({...f,meta:e.target.value}))} style={{...inp,width:80}}/></div>
@@ -1011,7 +1011,7 @@ function VistaCoordinadora({config,auditoras,servicios,historial,log,connected,o
 
 export default function App(){
   const [config,setConfig]=useState({institucion:"",area:"",pin:DEFAULT_PIN,logoUrl:""});
-  const [auditoras,setAuditoras]=useState({});
+  const [Auditores,setAuditores]=useState({});
   const [servicios,setServicios]=useState({});
   const [historial,setHistorial]=useState({});
   const [log,setLog]=useState([]);
@@ -1021,7 +1021,7 @@ export default function App(){
   useEffect(()=>{
     const pairs=[
       [ref(db,"config"),s=>setConfig(s.val()||{institucion:"",area:"",pin:DEFAULT_PIN,logoUrl:""})],
-      [ref(db,"auditoras"),s=>{setAuditoras(s.val()||{});setConnected(true);}],
+      [ref(db,"Auditores"),s=>{setAuditores(s.val()||{});setConnected(true);}],
       [ref(db,"servicios"),s=>setServicios(s.val()||{})],
       [ref(db,"historial"),s=>setHistorial(s.val()||{})],
       [ref(db,"log"),s=>{const d=s.val();setLog(d?Object.entries(d).map(([id,v])=>({...v,_id:id})).sort((a,b)=>b.ts_ms-a.ts_ms).slice(0,2000):[]); }],
@@ -1030,9 +1030,9 @@ export default function App(){
     return()=>unsubs.forEach(u=>u());
   },[]);
 
-  if(pantalla==="portada") return <Portada config={config} onSelectRol={rol=>setPantalla(rol==="auditora"?"auditora":"login-coord")}/>;
-  if(pantalla==="auditora") return <VistaAuditora config={config} auditoras={auditoras} servicios={servicios} historial={historial} connected={connected} onBack={()=>setPantalla("portada")}/>;
-  if(pantalla==="login-coord") return <LoginCoordinadora onLogin={()=>setPantalla("coord")} onBack={()=>setPantalla("portada")}/>;
-  if(pantalla==="coord") return <VistaCoordinadora config={config} auditoras={auditoras} servicios={servicios} historial={historial} log={log} connected={connected} onBack={()=>setPantalla("portada")}/>;
+  if(pantalla==="portada") return <Portada config={config} onSelectRol={rol=>setPantalla(rol==="Auditor(a)"?"Auditor(a)":"login-coord")}/>;
+  if(pantalla==="Auditor(a)") return <VistaAuditor(a) config={config} Auditores={Auditores} servicios={servicios} historial={historial} connected={connected} onBack={()=>setPantalla("portada")}/>;
+  if(pantalla==="login-coord") return <LoginCoordinador onLogin={()=>setPantalla("coord")} onBack={()=>setPantalla("portada")}/>;
+  if(pantalla==="coord") return <VistaCoordinador config={config} Auditores={Auditores} servicios={servicios} historial={historial} log={log} connected={connected} onBack={()=>setPantalla("portada")}/>;
   return null;
 }
